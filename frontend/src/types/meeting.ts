@@ -11,6 +11,7 @@ export interface Meeting {
   meeting_id: string;
   title: string;
   description: string | null;
+  status: string;
   created_at: string;
   scheduled_at: string | null;
   duration: number | null;
@@ -23,6 +24,7 @@ export interface MeetingListItem {
   meeting_id: string;
   title: string;
   description: string | null;
+  status: string;
   created_at: string;
   scheduled_at: string | null;
   duration: number | null;
@@ -52,6 +54,8 @@ export interface RemotePeer {
   userId: string;
   displayName: string;
   stream: MediaStream | null;
+  isCameraOn: boolean;
+  isMicOn: boolean;
 }
 
 export interface JoinPreferences {
@@ -73,7 +77,8 @@ export type SignalingMessageType =
   | "host-video-off"
   | "host-kick"
   | "kicked"
-  | "host-changed";
+  | "host-changed"
+  | "media-state";
 
 export interface SignalingMessage {
   type: SignalingMessageType;

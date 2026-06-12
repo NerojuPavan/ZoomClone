@@ -40,16 +40,19 @@ export function VideoGrid({
   roomParticipants,
 }: VideoGridProps) {
   const tiles = useMemo(() => {
-    const streamByUser = new Map(remotePeers.map((p) => [p.userId, p.stream]));
-    const nameByUser = new Map(remotePeers.map((p) => [p.userId, p.displayName]));
+    const peerByUser = new Map(remotePeers.map((p) => [p.userId, p]));
 
-    const remoteTiles: VideoTileParticipant[] = roomParticipants.map((p) => ({
-      userId: p.user_id,
-      displayName: p.display_name || nameByUser.get(p.user_id) || "Participant",
-      isLocal: false,
-      stream: streamByUser.get(p.user_id) ?? null,
-      isCameraOn: true,
-    }));
+    const remoteTiles: VideoTileParticipant[] = roomParticipants.map((p) => {
+      const peer = peerByUser.get(p.user_id);
+      return {
+        userId: p.user_id,
+        displayName: p.display_name || peer?.displayName || "Participant",
+        isLocal: false,
+        stream: peer?.stream ?? null,
+        isCameraOn: peer?.isCameraOn ?? false,
+        isMicOn: peer?.isMicOn ?? true,
+      };
+    });
 
     const localTile: VideoTileParticipant = {
       userId: localUserId,

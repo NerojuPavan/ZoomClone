@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #f7f9fc;
   --foreground: #1c1f25;
@@ -23,6 +25,44 @@
   --zoom-orange: #ff6b2c;
   --zoom-purple: #7b68ee;
   --zoom-teal: #09a287;
+  --meeting-bg: #f0f2f5;
+  --meeting-panel: #ffffff;
+  --meeting-panel-muted: #f7f9fc;
+  --meeting-text: #1c1f25;
+  --meeting-text-muted: #6e7680;
+  --meeting-border: #dfe3e8;
+  --video-tile: #e8ebf0;
+  --video-tile-from: #eef1f6;
+  --video-tile-to: #e8ebf0;
+}
+
+.dark {
+  --background: #0f1117;
+  --foreground: #f4f4f5;
+  --card: #1a1d21;
+  --card-foreground: #f4f4f5;
+  --primary: #2d8cff;
+  --primary-foreground: #ffffff;
+  --secondary: #27272a;
+  --secondary-foreground: #e4e4e7;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #1e3a5f;
+  --accent-foreground: #93c5fd;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #3f3f46;
+  --input: #3f3f46;
+  --ring: #2d8cff;
+  --meeting-bg: #0f1114;
+  --meeting-panel: #1a1d21;
+  --meeting-panel-muted: #232333;
+  --meeting-text: #ffffff;
+  --meeting-text-muted: #a1a1aa;
+  --meeting-border: #3f3f46;
+  --video-tile: #1a1d21;
+  --video-tile-from: #232333;
+  --video-tile-to: #1a1d21;
 }
 
 @theme inline {
@@ -43,6 +83,15 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-meeting-bg: var(--meeting-bg);
+  --color-meeting-panel: var(--meeting-panel);
+  --color-meeting-panel-muted: var(--meeting-panel-muted);
+  --color-meeting-text: var(--meeting-text);
+  --color-meeting-text-muted: var(--meeting-text-muted);
+  --color-meeting-border: var(--meeting-border);
+  --color-video-tile: var(--video-tile);
+  --color-video-tile-from: var(--video-tile-from);
+  --color-video-tile-to: var(--video-tile-to);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -58,7 +107,6 @@ body {
   transform: scaleX(-1);
 }
 
-/* Zoom-style focus rings on native inputs */
 input:focus-visible,
 textarea:focus-visible {
   outline: none;

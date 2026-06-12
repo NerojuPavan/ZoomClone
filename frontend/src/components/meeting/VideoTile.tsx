@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 import { MicOff, VideoOff } from "lucide-react";
 
-import { hasActiveVideo } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 
 import { ParticipantAvatar } from "./ParticipantAvatar";
@@ -27,7 +26,8 @@ export function VideoTile({ participant, className, fill = true }: VideoTileProp
   const videoRef = useRef<HTMLVideoElement>(null);
   const { userId, displayName, isLocal, stream, isCameraOn, isMicOn = true } = participant;
 
-  const showVideo = isCameraOn && hasActiveVideo(stream);
+  const hasStream = Boolean(stream && stream.getVideoTracks().length > 0);
+  const showVideo = isCameraOn && hasStream;
 
   useEffect(() => {
     const video = videoRef.current;
@@ -49,13 +49,13 @@ export function VideoTile({ participant, className, fill = true }: VideoTileProp
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl bg-[#1a1d21] ring-1 ring-white/10",
+        "relative overflow-hidden rounded-xl bg-video-tile ring-1 ring-meeting-border/50",
         fill ? "h-full w-full min-h-0" : "aspect-video",
         className,
       )}
     >
       {!showVideo && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#232333] to-[#1a1d21]">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-video-tile-from to-video-tile-to">
           <ParticipantAvatar
             userId={userId}
             displayName={displayName}
@@ -67,17 +67,13 @@ export function VideoTile({ participant, className, fill = true }: VideoTileProp
         </div>
       )}
 
-      {stream && (
+      {stream && showVideo && (
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted={isLocal}
-          className={cn(
-            "h-full w-full object-cover",
-            isLocal && "mirror",
-            !showVideo && "hidden",
-          )}
+          className={cn("h-full w-full object-cover", isLocal && "mirror")}
         />
       )}
 

@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 HOST_ACTIONS = frozenset({"host-mute", "host-video-off", "host-kick"})
+BROADCAST_ACTIONS = frozenset({"media-state"})
 
 
 async def _send_json(websocket: WebSocket, message: dict[str, Any]) -> None:
@@ -229,6 +230,17 @@ async def signaling_endpoint(
                             "payload": payload,
                         },
                     )
+            elif msg_type in BROADCAST_ACTIONS:
+                participants = await room_manager.list_participants(meeting_id)
+                await _broadcast(
+                    participants,
+                    {
+                        "type": msg_type,
+                        "user_id": user_id,
+                        "payload": payload,
+                    },
+                    exclude_user_id=user_id,
+                )
             elif msg_type == "leave":
                 break
             else:

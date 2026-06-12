@@ -3,6 +3,7 @@
 import { Calendar, Clock } from "lucide-react";
 
 import { Label } from "@/components/ui/label";
+import { getLocalDateString, getLocalTimeZoneLabel } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 
 export type AmPm = "AM" | "PM";
@@ -15,10 +16,10 @@ export interface DateTimeValue {
 }
 
 const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
-const MINUTES = ["00", "15", "30", "45"];
+const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
 
 const selectClass =
-  "h-11 w-full appearance-none rounded-xl border border-[#DFE3E8] bg-[#F7F9FC] px-3 text-sm text-[#1C1F25] transition-colors focus:border-[#7B68EE] focus:outline-none focus:ring-2 focus:ring-[#7B68EE]/25";
+  "h-11 w-full appearance-none rounded-xl border border-border bg-muted px-3 text-sm text-foreground transition-colors focus:border-[#7B68EE] focus:outline-none focus:ring-2 focus:ring-[#7B68EE]/25";
 
 interface DateTimeSchedulerProps {
   value: DateTimeValue;
@@ -28,15 +29,14 @@ interface DateTimeSchedulerProps {
 
 export function getDefaultDateTimeValue(): DateTimeValue {
   const now = new Date();
-  now.setMinutes(now.getMinutes() + 30);
-  now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
+  now.setMinutes(now.getMinutes() + 30, 0, 0);
 
   let hours = now.getHours();
   const period: AmPm = hours >= 12 ? "PM" : "AM";
   const hour12 = hours % 12 || 12;
 
   return {
-    date: now.toISOString().slice(0, 10),
+    date: getLocalDateString(now),
     hour: String(hour12),
     minute: String(now.getMinutes()).padStart(2, "0"),
     period,
@@ -60,7 +60,8 @@ export function buildScheduledAtISO(value: DateTimeValue): string | null {
 }
 
 export function DateTimeScheduler({ value, onChange, className }: DateTimeSchedulerProps) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateString();
+  const timeZone = getLocalTimeZoneLabel();
 
   const update = (patch: Partial<DateTimeValue>) => {
     onChange({ ...value, ...patch });
@@ -69,7 +70,7 @@ export function DateTimeScheduler({ value, onChange, className }: DateTimeSchedu
   return (
     <div className={cn("space-y-4", className)}>
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-[#3D4149]">Date</Label>
+        <Label className="text-sm font-medium text-secondary-foreground">Date</Label>
         <div className="relative">
           <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7B68EE]" />
           <input
@@ -78,13 +79,13 @@ export function DateTimeScheduler({ value, onChange, className }: DateTimeSchedu
             min={today}
             value={value.date}
             onChange={(e) => update({ date: e.target.value })}
-            className={cn(selectClass, "pl-10 [color-scheme:light]")}
+            className={cn(selectClass, "pl-10 [color-scheme:light] dark:[color-scheme:dark]")}
           />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label className="flex items-center gap-2 text-sm font-medium text-[#3D4149]">
+        <Label className="flex items-center gap-2 text-sm font-medium text-secondary-foreground">
           <Clock className="h-4 w-4 text-[#7B68EE]" />
           Time
         </Label>
@@ -132,7 +133,9 @@ export function DateTimeScheduler({ value, onChange, className }: DateTimeSchedu
               <option value="PM">PM</option>
             </select>
         </div>
-        <p className="text-xs text-[#6E7680]">Pick a date from the calendar and select a time</p>
+        <p className="text-xs text-muted-foreground">
+          Times use your local timezone ({timeZone})
+        </p>
       </div>
     </div>
   );

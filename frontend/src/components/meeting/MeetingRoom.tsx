@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { Copy, Loader2 } from "lucide-react";
+import { Copy, Loader2, Settings } from "lucide-react";
 
+import { SettingsDrawer } from "@/components/settings/SettingsDrawer";
 import { Button } from "@/components/ui/button";
 import { MAX_ROOM_PARTICIPANTS } from "@/lib/config";
+import { getMeetingJoinState } from "@/lib/meeting-rules";
 import { useMeeting } from "@/hooks/useMeeting";
 
 import { ControlBar } from "./ControlBar";
@@ -21,7 +24,8 @@ export function MeetingRoom({ meetingId }: MeetingRoomProps) {
   const [isLeaving, setIsLeaving] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [isParticipantsOpen, setIsParticipantsOpen] = useState(true);
+  const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const {
     meeting,
@@ -78,8 +82,8 @@ export function MeetingRoom({ meetingId }: MeetingRoomProps) {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#1a1d21] text-zinc-400">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin text-[#2D8CFF]" />
+      <div className="flex min-h-screen items-center justify-center bg-meeting-bg text-meeting-text-muted">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin text-primary" />
         Loading meeting...
       </div>
     );
@@ -87,10 +91,32 @@ export function MeetingRoom({ meetingId }: MeetingRoomProps) {
 
   if (error && !meeting && !isJoined) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#1a1d21] text-zinc-400">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-meeting-bg text-meeting-text-muted">
         <p className="text-red-400">{error}</p>
       </div>
     );
+  }
+
+  if (!isJoined && meeting) {
+    const joinState = getMeetingJoinState(meeting);
+    if (!joinState.joinable) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-meeting-bg px-6 text-center text-meeting-text-muted">
+          <p className="text-lg font-semibold text-meeting-text">{meeting.title}</p>
+          <p className="text-red-400">
+            {joinState.reason === "not_started"
+              ? "This meeting hasn't started yet."
+              : "This meeting has ended."}
+          </p>
+          <Link
+            href="/"
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Back to dashboard
+          </Link>
+        </div>
+      );
+    }
   }
 
   if (!isJoined) {
@@ -106,11 +132,11 @@ export function MeetingRoom({ meetingId }: MeetingRoomProps) {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#0f1114] text-white">
-      <header className="flex shrink-0 items-center justify-between border-b border-zinc-800 bg-[#1a1d21] px-5 py-3">
-        <div>
-          <h1 className="text-lg font-semibold">{meeting?.title}</h1>
-          <p className="text-xs text-zinc-400">
+    <div className="flex h-screen flex-col overflow-hidden bg-meeting-bg text-meeting-text">
+      <header className="flex shrink-0 flex-col gap-2 border-b border-meeting-border bg-meeting-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="min-w-0">
+          <h1 className="truncate text-base font-semibold sm:text-lg">{meeting?.title}</h1>
+          <p className="text-xs text-meeting-text-muted">
             <span
               className={
                 isConnected ? "text-emerald-400" : "text-amber-400"
@@ -125,20 +151,43 @@ export function MeetingRoom({ meetingId }: MeetingRoomProps) {
             )}
           </p>
         </div>
-        {meeting?.share_link && (
+        <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
           <Button
+            type="button"
             variant="outline"
-            size="sm"
-            className="border-zinc-700 bg-transparent text-zinc-200 hover:border-[#2D8CFF]/50 hover:bg-zinc-800"
-            onClick={handleCopyLink}
+            size="icon"
+            className="h-9 w-9 shrink-0 border-meeting-border bg-transparent text-meeting-text-muted hover:border-primary/50 hover:bg-meeting-panel-muted hover:text-meeting-text"
+            aria-label="Settings"
+            title="Settings"
+            onClick={() => setSettingsOpen(true)}
           >
-            <Copy className="mr-2 h-4 w-4" />
-            {copied ? "Copied!" : "Copy invite link"}
+            <Settings className="h-4 w-4" />
           </Button>
-        )}
+          {meeting?.share_link && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full shrink-0 border-meeting-border bg-transparent text-meeting-text hover:border-primary/50 hover:bg-meeting-panel-muted sm:w-auto"
+              onClick={handleCopyLink}
+            >
+              <Copy className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">{copied ? "Copied!" : "Copy invite link"}</span>
+              <span className="sm:hidden">{copied ? "Copied!" : "Copy link"}</span>
+            </Button>
+          )}
+        </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      {isParticipantsOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          aria-label="Close participants panel"
+          onClick={() => setIsParticipantsOpen(false)}
+        />
+      )}
+
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <main className="flex min-w-0 flex-1 flex-col">
           {mediaError && (
             <div className="shrink-0 bg-amber-900/50 px-4 py-2 text-sm text-amber-200">
@@ -146,13 +195,13 @@ export function MeetingRoom({ meetingId }: MeetingRoomProps) {
             </div>
           )}
           {!isMediaReady && !mediaError && (
-            <div className="flex shrink-0 items-center gap-2 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">
-              <Loader2 className="h-4 w-4 animate-spin text-[#2D8CFF]" />
+            <div className="flex shrink-0 items-center gap-2 bg-meeting-panel-muted px-4 py-2 text-sm text-meeting-text-muted">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
               Connecting to meeting...
             </div>
           )}
           {hostNotice && (
-            <div className="shrink-0 bg-[#2D8CFF]/20 px-4 py-2 text-sm text-[#7eb8ff]">
+            <div className="shrink-0 bg-primary/20 px-4 py-2 text-sm text-accent-foreground">
               {hostNotice}
             </div>
           )}
@@ -182,6 +231,7 @@ export function MeetingRoom({ meetingId }: MeetingRoomProps) {
           isMicOn={isMicOn}
           isCameraOn={isCameraOn}
           participants={participants}
+          remotePeers={remotePeers}
           onMute={muteParticipant}
           onMuteAll={muteAllParticipants}
           onDisableVideo={disableParticipantVideo}
@@ -200,6 +250,8 @@ export function MeetingRoom({ meetingId }: MeetingRoomProps) {
         onLeave={handleLeave}
         isLeaving={isLeaving}
       />
+
+      <SettingsDrawer open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }

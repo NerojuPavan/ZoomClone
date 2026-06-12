@@ -43,6 +43,8 @@ export function useWebRTC({
   const [remotePeers, setRemotePeers] = useState<RemotePeer[]>([]);
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
+  const isCameraOnRef = useRef(true);
+  const isMicOnRef = useRef(true);
   const [isMediaReady, setIsMediaReady] = useState(false);
   const [roomParticipants, setRoomParticipants] = useState<RoomParticipant[]>([]);
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -59,25 +61,57 @@ export function useWebRTC({
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const remoteStreamsRef = useRef<Map<string, MediaStream>>(new Map());
+  const streamCleanupRef = useRef<Map<string, () => void>>(new Map());
   const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const makingOfferRef = useRef<Set<string>>(new Set());
   const mediaReadyPromiseRef = useRef<Promise<MediaStream> | null>(null);
   const participantNamesRef = useRef<Map<string, string>>(new Map());
+  const remoteMediaStatesRef = useRef<Map<string, { isCameraOn: boolean; isMicOn: boolean }>>(new Map());
 
   const syncRemotePeers = useCallback(() => {
     const peers: RemotePeer[] = [];
 
     for (const participant of participantNamesRef.current.entries()) {
       const [userId, displayName] = participant;
+      const stream = remoteStreamsRef.current.get(userId) ?? null;
+      const signaledState = remoteMediaStatesRef.current.get(userId);
       peers.push({
         userId,
         displayName,
-        stream: remoteStreamsRef.current.get(userId) ?? null,
+        stream,
+        isCameraOn: signaledState?.isCameraOn ?? false,
+        isMicOn: signaledState?.isMicOn ?? false,
       });
     }
 
     setRemotePeers(peers);
   }, []);
+
+  const watchStreamTracks = useCallback(
+    (stream: MediaStream) => {
+      const handleTrackChange = () => syncRemotePeers();
+
+      for (const track of stream.getTracks()) {
+        track.addEventListener("mute", handleTrackChange);
+        track.addEventListener("unmute", handleTrackChange);
+        track.addEventListener("ended", handleTrackChange);
+      }
+
+      stream.addEventListener("addtrack", handleTrackChange);
+      stream.addEventListener("removetrack", handleTrackChange);
+
+      return () => {
+        for (const track of stream.getTracks()) {
+          track.removeEventListener("mute", handleTrackChange);
+          track.removeEventListener("unmute", handleTrackChange);
+          track.removeEventListener("ended", handleTrackChange);
+        }
+        stream.removeEventListener("addtrack", handleTrackChange);
+        stream.removeEventListener("removetrack", handleTrackChange);
+      };
+    },
+    [syncRemotePeers],
+  );
 
   const waitForLocalStream = useCallback(async (): Promise<MediaStream> => {
     if (localStreamRef.current) {
@@ -114,9 +148,12 @@ export function useWebRTC({
         peerConnectionsRef.current.delete(remoteUserId);
       }
       remoteStreamsRef.current.delete(remoteUserId);
+      streamCleanupRef.current.get(remoteUserId)?.();
+      streamCleanupRef.current.delete(remoteUserId);
       pendingCandidatesRef.current.delete(remoteUserId);
       makingOfferRef.current.delete(remoteUserId);
       participantNamesRef.current.delete(remoteUserId);
+      remoteMediaStatesRef.current.delete(remoteUserId);
       syncRemotePeers();
     },
     [syncRemotePeers],
@@ -126,6 +163,10 @@ export function useWebRTC({
     for (const userId of [...peerConnectionsRef.current.keys()]) {
       removePeer(userId);
     }
+    for (const cleanup of streamCleanupRef.current.values()) {
+      cleanup();
+    }
+    streamCleanupRef.current.clear();
     setRemotePeers([]);
   }, [removePeer]);
 
@@ -144,6 +185,7 @@ export function useWebRTC({
     stopLocalMedia();
     setRoomParticipants([]);
     participantNamesRef.current.clear();
+    remoteMediaStatesRef.current.clear();
   }, [cleanupAllPeers, stopLocalMedia]);
 
   const attachLocalTracks = useCallback((pc: RTCPeerConnection) => {
@@ -190,6 +232,8 @@ export function useWebRTC({
         if (!stream) {
           stream = event.streams[0] ?? new MediaStream();
           remoteStreamsRef.current.set(remoteUserId, stream);
+          streamCleanupRef.current.get(remoteUserId)?.();
+          streamCleanupRef.current.set(remoteUserId, watchStreamTracks(stream));
         }
         if (!stream.getTracks().some((t) => t.id === event.track.id)) {
           stream.addTrack(event.track);
@@ -209,7 +253,7 @@ export function useWebRTC({
 
       return pc;
     },
-    [attachLocalTracks, localUserId, registerParticipant, sendMessage, syncRemotePeers],
+    [attachLocalTracks, localUserId, registerParticipant, sendMessage, syncRemotePeers, watchStreamTracks],
   );
 
   const createAndSendOffer = useCallback(
@@ -245,6 +289,7 @@ export function useWebRTC({
     if (videoTrack) {
       videoTrack.enabled = enabled;
       setIsCameraOn(enabled);
+      isCameraOnRef.current = enabled;
     }
   }, []);
 
@@ -255,6 +300,7 @@ export function useWebRTC({
     if (audioTrack) {
       audioTrack.enabled = enabled;
       setIsMicOn(enabled);
+      isMicOnRef.current = enabled;
     }
   }, []);
 
@@ -274,6 +320,13 @@ export function useWebRTC({
           for (const participant of participants) {
             await createAndSendOffer(participant);
           }
+          sendMessage({
+            type: "media-state",
+            payload: {
+              isCameraOn: isCameraOnRef.current,
+              isMicOn: isMicOnRef.current,
+            },
+          });
           break;
         }
         case "user-joined": {
@@ -283,6 +336,13 @@ export function useWebRTC({
             return [...prev, joined];
           });
           registerParticipant(joined);
+          sendMessage({
+            type: "media-state",
+            payload: {
+              isCameraOn: isCameraOnRef.current,
+              isMicOn: isMicOnRef.current,
+            },
+          });
           break;
         }
         case "user-left": {
@@ -342,11 +402,25 @@ export function useWebRTC({
         case "host-mute": {
           setMicrophoneEnabled(false);
           setHostNotice("The host muted your microphone");
+          sendMessage({
+            type: "media-state",
+            payload: {
+              isCameraOn: isCameraOnRef.current,
+              isMicOn: false,
+            },
+          });
           break;
         }
         case "host-video-off": {
           setCameraEnabled(false);
           setHostNotice("The host turned off your camera");
+          sendMessage({
+            type: "media-state",
+            payload: {
+              isCameraOn: false,
+              isMicOn: isMicOnRef.current,
+            },
+          });
           break;
         }
         case "kicked": {
@@ -361,6 +435,17 @@ export function useWebRTC({
           if (newHostId === localUserId) {
             setHostNotice("You are now the meeting host");
           }
+          break;
+        }
+        case "media-state": {
+          if (!message.user_id) return;
+          const cameraOn = message.payload.isCameraOn as boolean;
+          const micOn = message.payload.isMicOn as boolean;
+          remoteMediaStatesRef.current.set(message.user_id, {
+            isCameraOn: cameraOn,
+            isMicOn: micOn,
+          });
+          syncRemotePeers();
           break;
         }
         case "error": {
@@ -381,17 +466,34 @@ export function useWebRTC({
       sendMessage,
       setCameraEnabled,
       setMicrophoneEnabled,
+      syncRemotePeers,
       waitForLocalStream,
     ],
   );
 
+  const broadcastMediaState = useCallback(
+    (cameraOn: boolean, micOn: boolean) => {
+      sendMessage({
+        type: "media-state",
+        payload: { isCameraOn: cameraOn, isMicOn: micOn },
+      });
+    },
+    [sendMessage],
+  );
+
   const toggleCamera = useCallback(() => {
-    setCameraEnabled(!isCameraOn);
-  }, [isCameraOn, setCameraEnabled]);
+    const newCameraOn = !isCameraOn;
+    setCameraEnabled(newCameraOn);
+    broadcastMediaState(newCameraOn, isMicOn);
+    setHostNotice(null);
+  }, [broadcastMediaState, isCameraOn, isMicOn, setCameraEnabled]);
 
   const toggleMicrophone = useCallback(() => {
-    setMicrophoneEnabled(!isMicOn);
-  }, [isMicOn, setMicrophoneEnabled]);
+    const newMicOn = !isMicOn;
+    setMicrophoneEnabled(newMicOn);
+    broadcastMediaState(isCameraOn, newMicOn);
+    setHostNotice(null);
+  }, [broadcastMediaState, isCameraOn, isMicOn, setMicrophoneEnabled]);
 
   useEffect(() => {
     if (!enabled) {
@@ -424,10 +526,12 @@ export function useWebRTC({
         if (audioTrack) {
           audioTrack.enabled = initialMicOn;
           setIsMicOn(initialMicOn);
+          isMicOnRef.current = initialMicOn;
         }
         if (videoTrack) {
           videoTrack.enabled = initialCameraOn;
           setIsCameraOn(initialCameraOn);
+          isCameraOnRef.current = initialCameraOn;
         }
         setLocalStream(stream);
         setIsMediaReady(true);

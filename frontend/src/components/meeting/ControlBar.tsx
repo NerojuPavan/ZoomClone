@@ -29,13 +29,13 @@ export function ControlBar({
   isLeaving,
 }: ControlBarProps) {
   return (
-    <div className="flex items-center justify-center gap-4 border-t border-zinc-800 bg-[#1a1d21]/95 px-6 py-4 backdrop-blur">
-      <div className="flex items-center gap-2 rounded-full bg-zinc-800/90 px-3 py-2">
+    <div className="flex items-center justify-center gap-2 border-t border-meeting-border bg-meeting-panel/95 px-3 py-3 backdrop-blur sm:gap-4 sm:px-6 sm:py-4">
+      <div className="flex items-center gap-1 rounded-full bg-meeting-panel-muted/90 px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2">
         <Button
           variant="ghost"
           size="icon"
           className={cn(
-            "h-11 w-11 rounded-full text-zinc-200 hover:bg-zinc-700",
+            "h-10 w-10 rounded-full text-meeting-text hover:bg-meeting-panel-muted sm:h-11 sm:w-11",
             !isMicOn && "bg-red-600 text-white hover:bg-red-700",
           )}
           onClick={onToggleMicrophone}
@@ -48,7 +48,7 @@ export function ControlBar({
           variant="ghost"
           size="icon"
           className={cn(
-            "h-11 w-11 rounded-full text-zinc-200 hover:bg-zinc-700",
+            "h-10 w-10 rounded-full text-meeting-text hover:bg-meeting-panel-muted sm:h-11 sm:w-11",
             !isCameraOn && "bg-red-600 text-white hover:bg-red-700",
           )}
           onClick={onToggleCamera}
@@ -61,14 +61,14 @@ export function ControlBar({
           variant="ghost"
           size="icon"
           className={cn(
-            "relative h-11 w-11 rounded-full text-zinc-200 hover:bg-zinc-700",
-            isParticipantsOpen && "bg-[#2D8CFF]/20 text-[#2D8CFF]",
+            "relative h-10 w-10 rounded-full text-meeting-text hover:bg-meeting-panel-muted sm:h-11 sm:w-11",
+            isParticipantsOpen && "bg-primary/20 text-primary",
           )}
           onClick={onToggleParticipants}
           aria-label={isParticipantsOpen ? "Hide participants" : "Show participants"}
         >
           <Users className="h-5 w-5" />
-          <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#2D8CFF] px-1 text-[10px] font-bold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
             {participantCount}
           </span>
         </Button>
@@ -77,7 +77,7 @@ export function ControlBar({
       <Button
         variant="destructive"
         size="icon"
-        className="h-12 w-12 rounded-full bg-red-600 hover:bg-red-700"
+        className="h-10 w-10 rounded-full bg-red-600 hover:bg-red-700 sm:h-12 sm:w-12"
         onClick={onLeave}
         disabled={isLeaving}
         aria-label="Leave meeting"

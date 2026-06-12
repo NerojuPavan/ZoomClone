@@ -57,7 +57,7 @@ export function DialogHeaderIcon({
       <span className={cn("mb-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold", styles.badge)}>
         {subtitle}
       </span>
-      <DialogTitle className="text-xl font-bold text-[#1C1F25]">{title}</DialogTitle>
+      <DialogTitle className="text-xl font-bold text-foreground">{title}</DialogTitle>
     </div>
   );
 }

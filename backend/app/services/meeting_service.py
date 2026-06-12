@@ -1,12 +1,17 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import Settings
-from app.models.meeting import Meeting
+from app.core.meeting_rules import (
+    MAX_MEETING_DURATION_MINUTES,
+    meeting_end,
+    validate_joinable,
+)
+from app.models.meeting import Meeting, MeetingStatus
 from app.models.participant import Participant
 from app.schemas.meeting import (
     JoinMeetingResponse,
@@ -31,6 +36,7 @@ class MeetingService:
             meeting_id=meeting.meeting_id,
             title=meeting.title,
             description=meeting.description,
+            status=meeting.status,
             created_at=meeting.created_at,
             scheduled_at=meeting.scheduled_at,
             duration=meeting.duration,
@@ -40,13 +46,29 @@ class MeetingService:
             ],
         )
 
+    def _to_naive_utc(self, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is not None:
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
+
     def create_meeting(self, payload: MeetingCreate) -> MeetingResponse:
+        if payload.scheduled_at:
+            duration = min(
+                payload.duration or MAX_MEETING_DURATION_MINUTES,
+                MAX_MEETING_DURATION_MINUTES,
+            )
+        else:
+            duration = MAX_MEETING_DURATION_MINUTES
+
         meeting = Meeting(
             meeting_id=str(uuid.uuid4()),
             title=payload.title,
             description=payload.description,
-            scheduled_at=payload.scheduled_at,
-            duration=payload.duration,
+            status=MeetingStatus.ACTIVE,
+            scheduled_at=self._to_naive_utc(payload.scheduled_at),
+            duration=duration,
         )
         self.db.add(meeting)
         self.db.commit()
@@ -73,6 +95,7 @@ class MeetingService:
                     meeting_id=meeting.meeting_id,
                     title=meeting.title,
                     description=meeting.description,
+                    status=meeting.status,
                     created_at=meeting.created_at,
                     scheduled_at=meeting.scheduled_at,
                     duration=meeting.duration,
@@ -107,6 +130,15 @@ class MeetingService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Meeting '{meeting_id}' not found",
+            )
+        join_error = validate_joinable(meeting)
+        if join_error:
+            if datetime.utcnow() >= meeting_end(meeting):
+                meeting.status = MeetingStatus.ENDED
+                self.db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE,
+                detail=join_error,
             )
 
         session_user_id = str(uuid.uuid4())
@@ -150,4 +182,17 @@ class MeetingService:
         )
         if participant:
             participant.left_at = datetime.utcnow()
+
+            active_count = (
+                self.db.query(func.count(Participant.id))
+                .filter(
+                    Participant.meeting_id == meeting.id,
+                    Participant.left_at.is_(None),
+                )
+                .scalar()
+                or 0
+            )
+            if active_count == 0:
+                meeting.status = MeetingStatus.ENDED
+
             self.db.commit()

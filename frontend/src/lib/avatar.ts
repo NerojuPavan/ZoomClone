@@ -31,8 +31,27 @@ export function getInitials(name: string): string {
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
+function isTrackActive(track: MediaStreamTrack | undefined): boolean {
+  return Boolean(
+    track && track.enabled && !track.muted && track.readyState === "live",
+  );
+}
+
+export function getStreamMediaState(stream: MediaStream | null): {
+  isCameraOn: boolean;
+  isMicOn: boolean;
+} {
+  if (!stream) {
+    return { isCameraOn: false, isMicOn: false };
+  }
+
+  return {
+    isCameraOn: isTrackActive(stream.getVideoTracks()[0]),
+    isMicOn: isTrackActive(stream.getAudioTracks()[0]),
+  };
+}
+
 export function hasActiveVideo(stream: MediaStream | null): boolean {
   if (!stream) return false;
-  const track = stream.getVideoTracks()[0];
-  return Boolean(track && track.enabled && track.readyState === "live");
+  return isTrackActive(stream.getVideoTracks()[0]);
 }

@@ -79,26 +79,26 @@ export function PreJoinScreen({
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7F9FC]">
+    <div className="flex min-h-screen flex-col bg-background">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -right-20 top-0 h-72 w-72 rounded-full bg-[#2D8CFF]/10 blur-3xl" />
         <div className="absolute -left-20 bottom-20 h-64 w-64 rounded-full bg-[#7B68EE]/8 blur-3xl" />
       </div>
 
-      <header className="relative border-b border-[#DFE3E8] bg-white/90 px-6 py-4 shadow-sm backdrop-blur-md">
+      <header className="relative border-b border-border bg-card/90 px-6 py-4 shadow-sm backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#2D8CFF] to-[#0E71EB] text-white shadow-md">
               <Video className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-[#2D8CFF]">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
                 Joining meeting
               </p>
-              <h1 className="text-xl font-bold text-[#1C1F25]">{meetingTitle}</h1>
+              <h1 className="text-xl font-bold text-foreground">{meetingTitle}</h1>
             </div>
           </div>
-          <code className="rounded-lg bg-[#EFF2F6] px-3 py-1.5 text-xs font-medium text-[#6E7680]">
+          <code className="rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
             ID: {meetingId.slice(0, 8)}...
           </code>
         </div>
@@ -106,15 +106,15 @@ export function PreJoinScreen({
 
       <main className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center gap-10 px-6 py-10 lg:flex-row lg:items-start lg:justify-center lg:gap-16 lg:pt-16">
         <div className="w-full max-w-2xl">
-          <div className="relative aspect-video overflow-hidden rounded-2xl bg-[#232333] shadow-2xl ring-1 ring-[#DFE3E8]">
+          <div className="relative aspect-video overflow-hidden rounded-2xl bg-video-tile shadow-2xl ring-1 ring-border">
             {!isReady && !mediaError && (
-              <div className="absolute inset-0 flex items-center justify-center text-[#9AA0A9]">
-                <Loader2 className="mr-2 h-5 w-5 animate-spin text-[#2D8CFF]" />
+              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                <Loader2 className="mr-2 h-5 w-5 animate-spin text-primary" />
                 Starting preview...
               </div>
             )}
             {mediaError && (
-              <div className="absolute inset-0 flex items-center justify-center bg-[#232333] p-6 text-center text-sm text-amber-300">
+              <div className="absolute inset-0 flex items-center justify-center bg-video-tile p-6 text-center text-sm text-amber-300">
                 {mediaError}
               </div>
             )}
@@ -133,7 +133,7 @@ export function PreJoinScreen({
               />
             )}
             {!isCameraOn && (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#2D3A4F] to-[#232333]">
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-video-tile-from to-video-tile-to">
                 <div className="flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-[#2D8CFF] to-[#0E71EB] text-4xl font-bold text-white shadow-lg">
                   {displayName ? displayName.charAt(0).toUpperCase() : "?"}
                 </div>
@@ -176,47 +176,47 @@ export function PreJoinScreen({
         </div>
 
         <div className="w-full max-w-md">
-          <div className="overflow-hidden rounded-2xl border border-[#DFE3E8] bg-white shadow-lg">
-            <div className="border-b border-[#EFF2F6] bg-gradient-to-b from-[#E7F1FF]/60 to-white px-8 py-6 text-center">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+            <div className="border-b border-border bg-gradient-to-b from-accent/60 to-card px-8 py-6 text-center">
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#2D8CFF] to-[#0E71EB] text-white shadow-md">
                 <User className="h-6 w-6" />
               </div>
-              <h2 className="text-2xl font-bold text-[#1C1F25]">Enter Meeting Info</h2>
-              <p className="mt-1 text-sm text-[#6E7680]">Set your name before joining</p>
+              <h2 className="text-2xl font-bold text-foreground">Enter Meeting Info</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Set your name before joining</p>
             </div>
 
             <form onSubmit={handleJoin} className="space-y-5 px-8 py-6">
               <div className="space-y-2">
-                <Label htmlFor="displayName" className="font-medium text-[#3D4149]">
+                <Label htmlFor="displayName" className="font-medium text-secondary-foreground">
                   Your Name
                 </Label>
                 <div className="relative">
-                  <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2D8CFF]" />
+                  <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
                   <Input
                     id="displayName"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="Enter your display name"
-                    className="h-12 rounded-xl border-[#DFE3E8] bg-[#F7F9FC] pl-10 focus-visible:border-[#2D8CFF] focus-visible:ring-[#2D8CFF]/25"
+                    className="h-12 rounded-xl border-border bg-muted pl-10 focus-visible:border-primary focus-visible:ring-primary/25"
                     autoFocus
                   />
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 rounded-xl bg-[#F7F9FC] p-3">
+              <div className="flex items-start gap-3 rounded-xl bg-muted p-3">
                 <Checkbox
                   id="remember"
                   checked={rememberName}
                   onCheckedChange={(checked) => setRememberName(checked === true)}
-                  className="mt-0.5 border-[#2D8CFF] data-[state=checked]:bg-[#2D8CFF]"
+                  className="mt-0.5 border-primary data-[state=checked]:bg-primary"
                 />
-                <Label htmlFor="remember" className="cursor-pointer text-sm leading-snug text-[#6E7680]">
+                <Label htmlFor="remember" className="cursor-pointer text-sm leading-snug text-muted-foreground">
                   Remember my name for future meetings
                 </Label>
               </div>
 
               {joinError && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{joinError}</p>
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-300">{joinError}</p>
               )}
 
               <Button

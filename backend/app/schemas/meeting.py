@@ -1,13 +1,15 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
+
+from app.schemas.serializers import serialize_utc_datetime
 
 
 class MeetingCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
     scheduled_at: datetime | None = None
-    duration: int | None = Field(None, ge=1, le=480)
+    duration: int | None = Field(None, ge=1, le=45)
 
 
 class ParticipantResponse(BaseModel):
@@ -19,12 +21,17 @@ class ParticipantResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_serializer("joined_at", "left_at")
+    def serialize_datetimes(self, value: datetime | None) -> str | None:
+        return serialize_utc_datetime(value)
+
 
 class MeetingResponse(BaseModel):
     id: int
     meeting_id: str
     title: str
     description: str | None
+    status: str
     created_at: datetime
     scheduled_at: datetime | None
     duration: int | None
@@ -33,12 +40,17 @@ class MeetingResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_serializer("created_at", "scheduled_at")
+    def serialize_datetimes(self, value: datetime | None) -> str | None:
+        return serialize_utc_datetime(value)
+
 
 class MeetingListItem(BaseModel):
     id: int
     meeting_id: str
     title: str
     description: str | None
+    status: str
     created_at: datetime
     scheduled_at: datetime | None
     duration: int | None
@@ -46,6 +58,10 @@ class MeetingListItem(BaseModel):
     participant_count: int
 
     model_config = {"from_attributes": True}
+
+    @field_serializer("created_at", "scheduled_at")
+    def serialize_datetimes(self, value: datetime | None) -> str | None:
+        return serialize_utc_datetime(value)
 
 
 class JoinMeetingRequest(BaseModel):

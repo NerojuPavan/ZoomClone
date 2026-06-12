@@ -10,6 +10,8 @@ import {
   Loader2,
   LogIn,
   Plus,
+  Settings,
+  User,
   Video,
 } from "lucide-react";
 
@@ -18,7 +20,10 @@ import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog";
+import { formatLocalDateTime } from "@/lib/datetime";
+import { getMeetingJoinState } from "@/lib/meeting-rules";
 import { meetingApi } from "@/services/meeting-api";
+import type { Meeting } from "@/types/meeting";
 
 import {
   buildScheduledAtISO,
@@ -29,6 +34,9 @@ import {
 import { DurationSelect } from "./DurationSelect";
 import { DialogHeaderIcon } from "./DialogHeaderIcon";
 import { FormField } from "./FormField";
+import { SettingsDrawer } from "@/components/settings/SettingsDrawer";
+
+import { ShareLinkBox } from "./ShareLinkBox";
 
 interface DashboardNavProps {
   onScheduled?: () => void;
@@ -53,6 +61,7 @@ export function DashboardNav({
   const [newDescription, setNewDescription] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [createdMeeting, setCreatedMeeting] = useState<Meeting | null>(null);
 
   const [joinId, setJoinId] = useState("");
   const [isJoining, setIsJoining] = useState(false);
@@ -66,14 +75,30 @@ export function DashboardNav({
   const [duration, setDuration] = useState("30");
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
-  const [scheduleSuccess, setScheduleSuccess] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [scheduledMeeting, setScheduledMeeting] = useState<Meeting | null>(null);
 
   const closeDialog = () => {
     setActiveDialog(null);
     setCreateError(null);
     setJoinError(null);
     setScheduleError(null);
-    setScheduleSuccess(null);
+    setCreatedMeeting(null);
+    setNewTitle("");
+    setNewDescription("");
+  };
+
+  const closeScheduleDialog = () => {
+    setActiveDialog(null);
+    setScheduleError(null);
+    setScheduleTitle("");
+    setScheduleDescription("");
+    setDateTimeValue(getDefaultDateTimeValue());
+    setDuration("30");
+  };
+
+  const closeScheduleSuccess = () => {
+    setScheduledMeeting(null);
   };
 
   const handleCreate = async (event: React.FormEvent) => {
@@ -86,7 +111,7 @@ export function DashboardNav({
         title: newTitle.trim(),
         description: newDescription.trim() || null,
       });
-      window.location.href = `/meeting/${meeting.meeting_id}`;
+      setCreatedMeeting(meeting);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "Failed to create meeting");
     } finally {
@@ -101,7 +126,16 @@ export function DashboardNav({
     setIsJoining(true);
     setJoinError(null);
     try {
-      await meetingApi.getMeeting(id);
+      const meeting = await meetingApi.getMeeting(id);
+      const joinState = getMeetingJoinState(meeting);
+      if (!joinState.joinable) {
+        setJoinError(
+          joinState.reason === "not_started"
+            ? "This meeting hasn't started yet"
+            : "This meeting has ended",
+        );
+        return;
+      }
       window.location.href = `/meeting/${id}`;
     } catch (err) {
       setJoinError(err instanceof Error ? err.message : "Meeting not found");
@@ -116,7 +150,6 @@ export function DashboardNav({
     if (!scheduleTitle.trim() || !scheduledAtISO) return;
     setIsScheduling(true);
     setScheduleError(null);
-    setScheduleSuccess(null);
     try {
       const meeting = await meetingApi.createMeeting({
         title: scheduleTitle.trim(),
@@ -124,10 +157,8 @@ export function DashboardNav({
         scheduled_at: scheduledAtISO,
         duration: Number(duration) || 30,
       });
-      setScheduleSuccess(`"${meeting.title}" scheduled successfully!`);
-      setScheduleTitle("");
-      setScheduleDescription("");
-      setDateTimeValue(getDefaultDateTimeValue());
+      closeScheduleDialog();
+      setScheduledMeeting(meeting);
       onScheduled?.();
     } catch (err) {
       setScheduleError(err instanceof Error ? err.message : "Failed to schedule");
@@ -144,43 +175,73 @@ export function DashboardNav({
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-[#DFE3E8] bg-white/90 shadow-sm backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link href="/" className="flex items-center gap-3">
+      <header className="sticky top-0 z-40 border-b border-border bg-card/90 shadow-sm backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-4">
+          <Link href="/" className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#2D8CFF] to-[#0E71EB] text-white shadow-md shadow-blue-200/50">
               <Video className="h-5 w-5" />
             </div>
-            <div>
-              <span className="text-lg font-bold text-[#1C1F25]">Zoom Clone</span>
-              <p className="text-[10px] font-medium uppercase tracking-wider text-[#6E7680]">
+            <div className="min-w-0">
+              <span className="truncate text-base font-bold text-foreground sm:text-lg">Zoom Clone</span>
+              <p className="hidden text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:block">
                 Meetings
               </p>
             </div>
           </Link>
 
-          <nav className="flex items-center gap-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Button
-                  key={item.key}
-                  variant="ghost"
-                  className={`gap-2 rounded-xl font-medium text-[#3D4149] ${item.color}`}
-                  onClick={() => setActiveDialog(item.key)}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{item.label}</span>
-                </Button>
-              );
-            })}
-          </nav>
+          <div className="flex items-center gap-2">
+            <nav className="flex items-center gap-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Button
+                    key={item.key}
+                    variant="ghost"
+                    className={`gap-2 rounded-xl font-medium text-secondary-foreground ${item.color}`}
+                    onClick={() => setActiveDialog(item.key)}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{item.label}</span>
+                  </Button>
+                );
+              })}
+            </nav>
+
+            <div className="ml-1 hidden h-6 w-px bg-border sm:block" />
+
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Settings"
+                title="Settings"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-9 gap-2 rounded-xl px-2 text-secondary-foreground hover:bg-muted"
+                aria-label="Profile"
+                title="Profile"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#2D8CFF] to-[#0E71EB] text-xs font-bold text-white">
+                  <User className="h-4 w-4" />
+                </div>
+                <span className="hidden text-sm font-medium md:inline">Guest User</span>
+              </Button>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* New Meeting Dialog */}
       <Dialog open={activeDialog === "new"} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="gap-0 overflow-hidden border-[#DFE3E8] p-0 sm:max-w-lg">
-          <div className="border-b border-[#EFF2F6] bg-gradient-to-b from-[#FFF0E8]/50 to-white px-6 pb-6 pt-6">
+        <DialogContent className="gap-0 overflow-hidden border-border p-0 sm:max-w-lg">
+          <div className="border-b border-border bg-gradient-to-b from-[#FFF0E8]/50 to-card px-6 pb-6 pt-6">
             <DialogHeaderIcon
               icon={Plus}
               title="Start a New Meeting"
@@ -188,53 +249,85 @@ export function DashboardNav({
               accent="orange"
             />
           </div>
-          <form onSubmit={handleCreate} className="space-y-5 px-6 py-6">
-            <FormField
-              id="nav-title"
-              label="Meeting title"
-              icon={Video}
-              placeholder="e.g. Team standup"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              hint="Give your meeting a clear, recognizable name"
-            />
-            <FormField
-              id="nav-desc"
-              label="Description"
-              icon={FileText}
-              multiline
-              placeholder="What's this meeting about?"
-              value={newDescription}
-              onChange={(e) => setNewDescription(e.target.value)}
-            />
-            {createError && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{createError}</p>
-            )}
-            <Button
-              type="submit"
-              className="h-12 w-full rounded-xl bg-gradient-to-r from-[#FF8A4C] to-[#FF6B2C] text-base font-semibold shadow-md shadow-orange-200/50 hover:from-[#FF7A3C] hover:to-[#E85D1A]"
-              disabled={isCreating || !newTitle.trim()}
-            >
-              {isCreating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Starting...
-                </>
-              ) : (
-                <>
+          {createdMeeting ? (
+            <div className="space-y-5 px-6 py-6">
+              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                &quot;{createdMeeting.title}&quot; is ready. Share the invite link below.
+              </p>
+              <ShareLinkBox
+                shareLink={createdMeeting.share_link}
+                meetingId={createdMeeting.meeting_id}
+              />
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12 flex-1 rounded-xl border-border"
+                  onClick={closeDialog}
+                >
+                  Close
+                </Button>
+                <Button
+                  type="button"
+                  className="h-12 flex-1 rounded-xl bg-gradient-to-r from-[#FF8A4C] to-[#FF6B2C] text-base font-semibold shadow-md shadow-orange-200/50 hover:from-[#FF7A3C] hover:to-[#E85D1A]"
+                  onClick={() => {
+                    window.location.href = `/meeting/${createdMeeting.meeting_id}`;
+                  }}
+                >
                   <Video className="mr-2 h-4 w-4" />
-                  Start Meeting
-                </>
+                  Join Meeting
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleCreate} className="space-y-5 px-6 py-6">
+              <FormField
+                id="nav-title"
+                label="Meeting title"
+                icon={Video}
+                placeholder="e.g. Team standup"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                hint="Give your meeting a clear, recognizable name"
+              />
+              <FormField
+                id="nav-desc"
+                label="Description"
+                icon={FileText}
+                multiline
+                placeholder="What's this meeting about?"
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+              />
+              {createError && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{createError}</p>
               )}
-            </Button>
-          </form>
+              <Button
+                type="submit"
+                className="h-12 w-full rounded-xl bg-gradient-to-r from-[#FF8A4C] to-[#FF6B2C] text-base font-semibold shadow-md shadow-orange-200/50 hover:from-[#FF7A3C] hover:to-[#E85D1A]"
+                disabled={isCreating || !newTitle.trim()}
+              >
+                {isCreating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Starting...
+                  </>
+                ) : (
+                  <>
+                    <Video className="mr-2 h-4 w-4" />
+                    Start Meeting
+                  </>
+                )}
+              </Button>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 
       {/* Join Meeting Dialog */}
       <Dialog open={activeDialog === "join"} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="gap-0 overflow-hidden border-[#DFE3E8] p-0 sm:max-w-lg">
-          <div className="border-b border-[#EFF2F6] bg-gradient-to-b from-[#E7F1FF]/50 to-white px-6 pb-6 pt-6">
+        <DialogContent className="gap-0 overflow-hidden border-border p-0 sm:max-w-lg">
+          <div className="border-b border-border bg-gradient-to-b from-[#E7F1FF]/50 to-card px-6 pb-6 pt-6">
             <DialogHeaderIcon
               icon={LogIn}
               title="Join a Meeting"
@@ -281,9 +374,9 @@ export function DashboardNav({
       </Dialog>
 
       {/* Schedule Meeting Dialog */}
-      <Dialog open={activeDialog === "schedule"} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="gap-0 overflow-hidden border-[#DFE3E8] p-0 sm:max-w-lg">
-          <div className="border-b border-[#EFF2F6] bg-gradient-to-b from-[#F0EDFF]/50 to-white px-6 pb-6 pt-6">
+      <Dialog open={activeDialog === "schedule"} onOpenChange={(open) => !open && closeScheduleDialog()}>
+        <DialogContent className="gap-0 overflow-hidden border-border p-0 sm:max-w-lg">
+          <div className="border-b border-border bg-gradient-to-b from-[#F0EDFF]/50 to-card px-6 pb-6 pt-6">
             <DialogHeaderIcon
               icon={CalendarDays}
               title="Schedule a Meeting"
@@ -314,11 +407,6 @@ export function DashboardNav({
             {scheduleError && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{scheduleError}</p>
             )}
-            {scheduleSuccess && (
-              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                {scheduleSuccess}
-              </p>
-            )}
             <Button
               type="submit"
               className="h-12 w-full rounded-xl bg-gradient-to-r from-[#9B8AFF] to-[#7B68EE] text-base font-semibold shadow-md shadow-violet-200/50 hover:from-[#8B7AEF] hover:to-[#6B58DE]"
@@ -343,6 +431,84 @@ export function DashboardNav({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Schedule Success Dialog */}
+      <Dialog open={!!scheduledMeeting} onOpenChange={(open) => !open && closeScheduleSuccess()}>
+        <DialogContent className="gap-0 overflow-hidden border-border p-0 sm:max-w-lg">
+          <div className="border-b border-border bg-gradient-to-b from-[#F0EDFF]/50 to-card px-6 pb-6 pt-6">
+            <DialogHeaderIcon
+              icon={CalendarDays}
+              title="Meeting Scheduled"
+              subtitle="You're all set"
+              accent="purple"
+            />
+          </div>
+          {scheduledMeeting && (
+            <div className="space-y-5 px-6 py-6">
+              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                &quot;{scheduledMeeting.title}&quot; has been added to your upcoming meetings.
+              </p>
+
+              <div className="space-y-3 rounded-xl border border-border bg-muted p-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Meeting title
+                  </p>
+                  <p className="mt-1 font-semibold text-foreground">{scheduledMeeting.title}</p>
+                </div>
+                {scheduledMeeting.description && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Description
+                    </p>
+                    <p className="mt-1 text-sm text-secondary-foreground">{scheduledMeeting.description}</p>
+                  </div>
+                )}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Date & time
+                    </p>
+                    <p className="mt-1 text-sm text-secondary-foreground">
+                      {formatLocalDateTime(scheduledMeeting.scheduled_at, {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Duration
+                    </p>
+                    <p className="mt-1 text-sm text-secondary-foreground">
+                      {scheduledMeeting.duration ?? 45} minutes
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <ShareLinkBox
+                shareLink={scheduledMeeting.share_link}
+                meetingId={scheduledMeeting.meeting_id}
+                label="Invite link"
+              />
+
+              <Button
+                type="button"
+                className="h-12 w-full rounded-xl bg-gradient-to-r from-[#9B8AFF] to-[#7B68EE] text-base font-semibold shadow-md shadow-violet-200/50 hover:from-[#8B7AEF] hover:to-[#6B58DE]"
+                onClick={closeScheduleSuccess}
+              >
+                Done
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <SettingsDrawer open={settingsOpen} onOpenChange={setSettingsOpen} />
     </>
   );
 }
