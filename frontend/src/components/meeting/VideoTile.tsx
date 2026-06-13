@@ -26,14 +26,14 @@ export function VideoTile({ participant, className, fill = true }: VideoTileProp
   const videoRef = useRef<HTMLVideoElement>(null);
   const { userId, displayName, isLocal, stream, isCameraOn, isMicOn = true } = participant;
 
-  const hasStream = Boolean(stream && stream.getVideoTracks().length > 0);
-  const showVideo = isCameraOn && hasStream;
+  const hasVideoTrack = Boolean(stream?.getVideoTracks().length);
+  const showVideo = isCameraOn && hasVideoTrack;
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    if (!stream || !showVideo) {
+    if (!stream) {
       video.srcObject = null;
       return;
     }
@@ -44,7 +44,7 @@ export function VideoTile({ participant, className, fill = true }: VideoTileProp
     const onAddTrack = () => void video.play().catch(() => {});
     stream.addEventListener("addtrack", onAddTrack);
     return () => stream.removeEventListener("addtrack", onAddTrack);
-  }, [stream, showVideo]);
+  }, [stream]);
 
   return (
     <div
@@ -67,13 +67,17 @@ export function VideoTile({ participant, className, fill = true }: VideoTileProp
         </div>
       )}
 
-      {stream && showVideo && (
+      {stream && (
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted={isLocal}
-          className={cn("h-full w-full object-cover", isLocal && "mirror")}
+          className={cn(
+            "h-full w-full object-cover",
+            isLocal && "mirror",
+            !showVideo && "pointer-events-none absolute h-px w-px overflow-hidden opacity-0",
+          )}
         />
       )}
 
