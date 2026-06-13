@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CalendarClock, History, Loader2 } from "lucide-react";
+
+import { useAuth } from "@/components/providers/AuthProvider";
 
 import { isUpcomingMeeting } from "@/lib/meeting-rules";
 import { meetingApi } from "@/services/meeting-api";
@@ -22,6 +25,8 @@ function matchesSearch(meeting: MeetingListItem, query: string): boolean {
 }
 
 export function Dashboard() {
+  const router = useRouter();
+  const { user, isReady, canAccessDashboard } = useAuth();
   const [meetings, setMeetings] = useState<MeetingListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,8 +47,15 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
+    if (isReady && !canAccessDashboard) {
+      router.replace("/");
+    }
+  }, [isReady, canAccessDashboard, router]);
+
+  useEffect(() => {
+    if (!canAccessDashboard) return;
     loadMeetings();
-  }, [loadMeetings]);
+  }, [loadMeetings, canAccessDashboard]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -69,6 +81,15 @@ export function Dashboard() {
       .filter((m) => !isUpcomingMeeting(m, now))
       .filter((m) => matchesSearch(m, search));
   }, [meetings, now, search]);
+
+  if (!isReady || !canAccessDashboard) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin text-primary" />
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

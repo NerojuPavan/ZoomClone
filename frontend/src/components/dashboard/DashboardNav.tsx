@@ -2,16 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   FileText,
   Link2,
   Loader2,
   LogIn,
+  LogOut,
   Plus,
   Search,
   Settings,
-  User,
   Video,
 } from "lucide-react";
 
@@ -20,6 +21,7 @@ import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { formatLocalDateTime } from "@/lib/datetime";
 import { getMeetingJoinState } from "@/lib/meeting-rules";
 import { meetingApi } from "@/services/meeting-api";
@@ -55,6 +57,8 @@ export function DashboardNav({
   search = "",
   onSearchChange,
 }: DashboardNavProps) {
+  const router = useRouter();
+  const { user, isGuest, logout } = useAuth();
   const [internalDialog, setInternalDialog] = useState<DashboardDialog | null>(null);
   const activeDialog = controlledDialog !== undefined ? controlledDialog : internalDialog;
 
@@ -106,6 +110,14 @@ export function DashboardNav({
   const closeScheduleSuccess = () => {
     setScheduledMeeting(null);
   };
+
+  const handleLogout = () => {
+    logout();
+    router.push("/");
+  };
+
+  const displayName = user?.username ?? (isGuest ? "Guest" : "User");
+  const profileInitial = displayName.charAt(0).toUpperCase();
 
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -217,14 +229,27 @@ export function DashboardNav({
             <Button
               type="button"
               variant="ghost"
+              size="icon"
+              className="rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Log out"
+              title="Log out"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
               className="h-9 gap-2 rounded-xl px-2 text-secondary-foreground hover:bg-muted"
               aria-label="Profile"
-              title="Profile"
+              title={displayName}
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                <User className="h-4 w-4" />
+                {profileInitial}
               </div>
-              <span className="hidden text-sm font-medium md:inline">Guest User</span>
+              <span className="hidden max-w-[120px] truncate text-sm font-medium md:inline">
+                {displayName}
+              </span>
             </Button>
           </div>
         </div>

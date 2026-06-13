@@ -34,7 +34,7 @@ def _migrate_schema() -> None:
 
 def init_db() -> None:
     # Import models so metadata is registered before create_all.
-    from app.models import meeting, participant  # noqa: F401
+    from app.models import meeting, participant, user  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     _migrate_schema()

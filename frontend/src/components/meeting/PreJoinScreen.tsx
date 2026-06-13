@@ -21,6 +21,7 @@ import {
   getRememberedName,
   setRememberedName,
 } from "@/lib/user-preferences";
+import { getAuthUser } from "@/store/auth-storage";
 import { cn } from "@/lib/utils";
 import type { JoinPreferences } from "@/types/meeting";
 
@@ -58,6 +59,11 @@ export function PreJoinScreen({
     if (saved) {
       setDisplayName(saved);
       setRememberName(true);
+      return;
+    }
+    const authUser = getAuthUser();
+    if (authUser) {
+      setDisplayName(authUser.username);
     }
   }, []);
 
