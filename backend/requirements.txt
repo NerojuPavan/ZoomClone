@@ -3,4 +3,6 @@ uvicorn[standard]
 websockets
 python-dotenv
 pydantic
+email-validator
 sqlalchemy
+bcrypt
