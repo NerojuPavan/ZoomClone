@@ -1,0 +1,69 @@
+---
+description: Frontend conventions for the Zoom Clone Next.js app
+globs: frontend/**/*
+alwaysApply: false
+---
+
+# Frontend — Zoom Clone
+
+## Stack
+
+- Next.js App Router (`frontend/src/app/`)
+- TypeScript strict, React 19 client components where needed (`"use client"`)
+- Tailwind CSS v4 + semantic tokens in `globals.css` (`background`, `foreground`, `card`, `primary`, `meeting-*`)
+- shadcn-style UI in `components/ui/`
+- Lucide icons
+
+## Architecture
+
+- **Pages thin, logic in hooks** — `useMeeting` orchestrates API + WebSocket + WebRTC
+- **REST** — `services/meeting-api.ts` only; no fetch scattered in components
+- **Types** — shared in `types/meeting.ts` (including `SignalingMessage` union)
+- **Rules** — client join/upcoming logic in `lib/meeting-rules.ts` (keep aligned with backend)
+
+### Hook split
+
+| Hook | Owns |
+|------|------|
+| `usePreJoinMedia` | Pre-join getUserMedia + toggles |
+| `useWebRTC` | Local stream, peer connections, signaling handler, host state |
+| `useWebSocket` | WS connect/send; enabled only after `isMediaReady` |
+| `useMeeting` | Session, join/leave API, wires hooks together |
+
+## UI conventions
+
+- Dashboard: `DashboardNav` (logo, search, settings), `DashboardHero` (clock + actions), `MeetingList`
+- Zoom blue primary: `#0E71EB` / `primary` token; orange for new meeting `#FF6B2C`
+- Use semantic colors for dark mode — avoid hardcoded `bg-white` / `#F7F9FC` without `dark:` or tokens
+- Required form fields: `required` prop on `FormField` + red `RequiredMark` asterisk; description stays optional
+- Meeting room: dark `meeting-*` tokens; local video always `muted`; remote audio must stay mounted when camera off (`VideoTile`)
+
+## WebRTC rules
+
+- Wait for `getUserMedia` before WebSocket connect and before creating offers/answers
+- Mesh topology: one `RTCPeerConnection` per remote peer
+- Broadcast mic/camera UI via `media-state` WS message (remote track `enabled` is not reliable cross-browser)
+- ICE: STUN only in `lib/config.ts` — document if adding TURN
+
+## Component guidelines
+
+- Prefer focused components under `components/dashboard/` and `components/meeting/`
+- Colocate small helpers; avoid new one-line utility files
+- Match existing naming: `PascalCase` components, `useCamelCase` hooks
+- Do not add tests unless requested
+
+## Env
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_WS_URL=ws://localhost:8000
+```
+
+Production must use `https` / `wss`.
+
+## Avoid
+
+- Socket.io (native WebSocket only)
+- Putting WebRTC signaling logic in JSX/components
+- Unmounting `<video>` when remote camera is off (breaks audio)
+- Duplicating meeting duration/join rules without checking `lib/meeting-rules.ts`

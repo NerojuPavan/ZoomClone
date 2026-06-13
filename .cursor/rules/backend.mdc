@@ -1,0 +1,84 @@
+---
+description: Backend conventions for the Zoom Clone FastAPI app
+globs: backend/**/*
+alwaysApply: false
+---
+
+# Backend — Zoom Clone
+
+## Stack
+
+- Python 3.11+
+- FastAPI + Uvicorn
+- SQLAlchemy 2.x (sync) + SQLite
+- Pydantic v2 schemas
+- Native WebSockets (no Socket.io)
+
+## Layered architecture
+
+```
+api/          → Routers only: parse input, call service, return schema
+services/     → Business logic + DB commits (MeetingService)
+models/       → SQLAlchemy ORM (Meeting, Participant)
+schemas/      → Pydantic request/response DTOs
+core/         → config.py, meeting_rules.py (pure join/duration rules)
+websocket/    → signaling.py (message routing), room_manager.py (in-memory)
+db/           → Base, session, init_db
+```
+
+**Rules**
+
+- Routers stay thin — no SQL in `api/meetings.py`
+- Shared validation in `core/meeting_rules.py`; mirror critical rules on frontend
+- UTC datetimes in DB; naive UTC storage, ISO with `Z` in API responses via serializers
+
+## Meeting domain
+
+- Public ID: `meeting_id` (UUID string); internal PK: `id`
+- Status: `active` | `ended`
+- Share links: `{FRONTEND_URL}/meeting/{meeting_id}` — computed, not stored
+- Max scheduled duration: 45 minutes (`MAX_MEETING_DURATION_MINUTES`)
+- Join rejects ended/expired/not-yet-started meetings (HTTP 410)
+
+## WebSocket signaling
+
+- Endpoint: `/ws/{meeting_id}?user_id=&display_name=`
+- `RoomManager`: in-memory; first joiner = host; max 5 participants
+- Relay: `offer`, `answer`, `ice-candidate` to `target_user_id`
+- Host-only: `host-mute`, `host-video-off`, `host-kick` — verify with `room_manager.is_host`
+- Broadcast: `media-state`, `user-joined`, `user-left`, `host-changed`
+
+Message shape:
+
+```json
+{ "type": "...", "user_id": "...", "target_user_id": "...", "payload": {} }
+```
+
+## Config (env)
+
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | SQLAlchemy URL |
+| `FRONTEND_URL` | Invite link base |
+| `CORS_ORIGINS` | Comma-separated origins |
+
+## Patterns
+
+- Use `HTTPException` with appropriate status (404, 410)
+- `MeetingService` receives `db: Session` + `Settings` via DI in router
+- Seed script: `backend/seed.py` (idempotent unless `--force`)
+- Start: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+
+## Avoid
+
+- Async SQLAlchemy unless migrating the whole stack
+- Storing WebRTC/media on the server
+- Trusting client for host checks without `RoomManager.is_host`
+- Adding auth middleware without an explicit product requirement
+- Hardcoding `localhost` URLs — use `Settings`
+
+## Production notes
+
+- `RoomManager` is single-process; horizontal scale needs shared room state
+- SQLite → Postgres for production persistence
+- Railway/Render: run from `backend/` with `$PORT`
