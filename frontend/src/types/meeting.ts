@@ -16,6 +16,8 @@ export interface Meeting {
   scheduled_at: string | null;
   duration: number | null;
   share_link: string;
+  user_id?: number | null;
+  is_permanent?: boolean;
   participants: Participant[];
 }
 
@@ -30,6 +32,13 @@ export interface MeetingListItem {
   duration: number | null;
   share_link: string;
   participant_count: number;
+  user_id?: number | null;
+  is_permanent?: boolean;
+}
+
+export interface MeetingListResponse {
+  public_meetings: MeetingListItem[];
+  my_meetings: MeetingListItem[];
 }
 
 export interface MeetingCreatePayload {
@@ -37,6 +46,7 @@ export interface MeetingCreatePayload {
   description?: string | null;
   scheduled_at?: string | null;
   duration?: number | null;
+  user_id?: number | null;
 }
 
 export interface JoinMeetingResponse {

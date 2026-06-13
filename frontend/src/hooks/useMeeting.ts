@@ -11,6 +11,7 @@ import {
   setMeetingSession,
   type MeetingSession,
 } from "@/store/meeting-session";
+import { getPostMeetingRedirectPath } from "@/store/auth-storage";
 import type { JoinPreferences, Meeting, RemotePeer } from "@/types/meeting";
 
 import { useWebRTC } from "./useWebRTC";
@@ -218,7 +219,7 @@ export function useMeeting({ meetingId }: UseMeetingOptions): UseMeetingReturn {
     disconnect();
     cleanupWebRTC();
     setSession(null);
-    router.push("/");
+    router.push(getPostMeetingRedirectPath());
   }, [cleanupWebRTC, disconnect, meetingId, router, session]);
 
   useEffect(() => {

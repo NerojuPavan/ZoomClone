@@ -23,6 +23,11 @@ def meeting_end(meeting: Meeting) -> datetime:
 def validate_joinable(meeting: Meeting, now: datetime | None = None) -> str | None:
     now = now or datetime.utcnow()
 
+    if meeting.is_permanent:
+        if meeting.status == MeetingStatus.ENDED:
+            return "This meeting has ended"
+        return None
+
     if meeting.status == MeetingStatus.ENDED:
         return "This meeting has ended"
 

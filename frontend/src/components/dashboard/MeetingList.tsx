@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 interface MeetingListProps {
-  variant: "upcoming" | "recent";
+  variant: "open" | "upcoming" | "recent";
   title: string;
   description: string;
   meetings: MeetingListItem[];
@@ -123,6 +123,47 @@ function CopyLinkButton({ shareLink }: { shareLink: string }) {
       <Copy className="mr-1 h-3.5 w-3.5" />
       {copied ? "Copied" : "Copy"}
     </Button>
+  );
+}
+
+function OpenMeetingRow({ meeting }: { meeting: MeetingListItem }) {
+  return (
+    <div className="flex flex-col gap-3 border-b border-border px-4 py-3 last:border-b-0 hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="truncate font-medium text-foreground">{meeting.title}</p>
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+            Always open
+          </span>
+          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+            Live
+          </span>
+        </div>
+        {meeting.description && (
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+            {meeting.description}
+          </p>
+        )}
+        <p className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-0.5">
+            <Users className="h-3 w-3" />
+            {meeting.participant_count} joined
+          </span>
+          <span className="font-mono">{meeting.meeting_id.slice(0, 8)}</span>
+        </p>
+      </div>
+
+      <div className="flex items-center gap-1">
+        {meeting.share_link && <CopyLinkButton shareLink={meeting.share_link} />}
+        <Button
+          asChild
+          size="sm"
+          className="h-8 rounded-md bg-primary px-4 text-xs text-primary-foreground hover:bg-primary/90"
+        >
+          <Link href={`/meeting/${meeting.meeting_id}`}>Join</Link>
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -251,10 +292,10 @@ export function MeetingList({
     return () => window.clearInterval(interval);
   }, []);
 
-  const groups = useMemo(
-    () => groupMeetingsByDate(meetings, now, variant === "recent"),
-    [meetings, now, variant],
-  );
+  const groups = useMemo(() => {
+    if (variant === "open") return [];
+    return groupMeetingsByDate(meetings, now, variant === "recent");
+  }, [meetings, now, variant]);
 
   const openCount = meetings.filter((m) => isMeetingOpen(m, now)).length;
 
@@ -279,6 +320,12 @@ export function MeetingList({
       {meetings.length === 0 ? (
         <div className="px-4 py-10 text-center sm:px-5">
           <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+        </div>
+      ) : variant === "open" ? (
+        <div>
+          {meetings.map((meeting) => (
+            <OpenMeetingRow key={meeting.meeting_id} meeting={meeting} />
+          ))}
         </div>
       ) : (
         <div>

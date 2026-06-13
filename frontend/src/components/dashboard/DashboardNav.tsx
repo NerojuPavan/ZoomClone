@@ -128,6 +128,7 @@ export function DashboardNav({
       const meeting = await meetingApi.createMeeting({
         title: newTitle.trim(),
         description: newDescription.trim() || null,
+        user_id: user?.id ?? null,
       });
       setCreatedMeeting(meeting);
     } catch (err) {
@@ -174,6 +175,7 @@ export function DashboardNav({
         description: scheduleDescription.trim() || null,
         scheduled_at: scheduledAtISO,
         duration: Number(duration) || 30,
+        user_id: user?.id ?? null,
       });
       closeScheduleDialog();
       setScheduledMeeting(meeting);

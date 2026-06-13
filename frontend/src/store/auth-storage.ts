@@ -41,3 +41,10 @@ export function clearSession(): void {
   clearAuthUser();
   clearGuestMode();
 }
+
+export function getPostMeetingRedirectPath(): string {
+  if (getAuthUser() || isGuestMode()) {
+    return "/dashboard";
+  }
+  return "/";
+}

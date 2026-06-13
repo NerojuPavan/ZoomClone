@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarClock, History, Loader2 } from "lucide-react";
+import { CalendarClock, Globe, History, Loader2 } from "lucide-react";
 
 import { useAuth } from "@/components/providers/AuthProvider";
 
@@ -27,7 +28,8 @@ function matchesSearch(meeting: MeetingListItem, query: string): boolean {
 export function Dashboard() {
   const router = useRouter();
   const { user, isReady, canAccessDashboard } = useAuth();
-  const [meetings, setMeetings] = useState<MeetingListItem[]>([]);
+  const [publicMeetings, setPublicMeetings] = useState<MeetingListItem[]>([]);
+  const [myMeetings, setMyMeetings] = useState<MeetingListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -37,14 +39,15 @@ export function Dashboard() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await meetingApi.listMeetings();
-      setMeetings(data);
+      const data = await meetingApi.listMeetings(user?.id);
+      setPublicMeetings(data.public_meetings);
+      setMyMeetings(data.my_meetings);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load meetings");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     if (isReady && !canAccessDashboard) {
@@ -70,17 +73,21 @@ export function Dashboard() {
 
   const now = new Date();
 
+  const openRooms = useMemo(() => {
+    return publicMeetings.filter((m) => matchesSearch(m, search));
+  }, [publicMeetings, search]);
+
   const upcomingMeetings = useMemo(() => {
-    return meetings
+    return myMeetings
       .filter((m) => isUpcomingMeeting(m, now))
       .filter((m) => matchesSearch(m, search));
-  }, [meetings, now, search]);
+  }, [myMeetings, now, search]);
 
   const recentMeetings = useMemo(() => {
-    return meetings
+    return myMeetings
       .filter((m) => !isUpcomingMeeting(m, now))
       .filter((m) => matchesSearch(m, search));
-  }, [meetings, now, search]);
+  }, [myMeetings, now, search]);
 
   if (!isReady || !canAccessDashboard) {
     return (
@@ -116,25 +123,57 @@ export function Dashboard() {
         ) : (
           <div className="space-y-5">
             <MeetingList
-              variant="upcoming"
-              title="Upcoming Meetings"
-              description="Scheduled sessions you can start or join"
-              meetings={upcomingMeetings}
+              variant="open"
+              title="Open Rooms"
+              description="Always available — join anytime, shown to everyone"
+              meetings={openRooms}
               emptyMessage={
-                search.trim() ? "No upcoming meetings match your search" : "No upcoming meetings"
+                search.trim() ? "No open rooms match your search" : "No open rooms available"
               }
-              icon={CalendarClock}
+              icon={Globe}
             />
-            <MeetingList
-              variant="recent"
-              title="Previous Meetings"
-              description="Instant calls and past sessions"
-              meetings={recentMeetings}
-              emptyMessage={
-                search.trim() ? "No previous meetings match your search" : "No previous meetings"
-              }
-              icon={History}
-            />
+
+            {!user && (
+              <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-center text-sm text-muted-foreground">
+                <Link href="/login" className="font-medium text-primary hover:underline">
+                  Sign in
+                </Link>{" "}
+                or{" "}
+                <Link href="/register" className="font-medium text-primary hover:underline">
+                  register
+                </Link>{" "}
+                to create and save your own meetings.
+              </div>
+            )}
+
+            {user && (
+              <>
+                <MeetingList
+                  variant="upcoming"
+                  title="My Upcoming Meetings"
+                  description="Your scheduled sessions"
+                  meetings={upcomingMeetings}
+                  emptyMessage={
+                    search.trim()
+                      ? "No upcoming meetings match your search"
+                      : "No upcoming meetings yet"
+                  }
+                  icon={CalendarClock}
+                />
+                <MeetingList
+                  variant="recent"
+                  title="My Previous Meetings"
+                  description="Your past instant and scheduled calls"
+                  meetings={recentMeetings}
+                  emptyMessage={
+                    search.trim()
+                      ? "No previous meetings match your search"
+                      : "No previous meetings yet"
+                  }
+                  icon={History}
+                />
+              </>
+            )}
           </div>
         )}
       </main>

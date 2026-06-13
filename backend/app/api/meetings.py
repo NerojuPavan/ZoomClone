@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
@@ -7,7 +7,7 @@ from app.schemas.meeting import (
     JoinMeetingRequest,
     JoinMeetingResponse,
     MeetingCreate,
-    MeetingListItem,
+    MeetingListResponse,
     MeetingResponse,
 )
 from app.services.meeting_service import MeetingService
@@ -30,11 +30,12 @@ def create_meeting(
     return service.create_meeting(payload)
 
 
-@router.get("", response_model=list[MeetingListItem])
+@router.get("", response_model=MeetingListResponse)
 def list_meetings(
+    user_id: int | None = Query(default=None),
     service: MeetingService = Depends(get_meeting_service),
-) -> list[MeetingListItem]:
-    return service.list_meetings()
+) -> MeetingListResponse:
+    return service.list_meetings(user_id=user_id)
 
 
 @router.get("/{meeting_id}", response_model=MeetingResponse)

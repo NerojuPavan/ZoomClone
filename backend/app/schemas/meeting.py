@@ -10,6 +10,7 @@ class MeetingCreate(BaseModel):
     description: str | None = None
     scheduled_at: datetime | None = None
     duration: int | None = Field(None, ge=1, le=45)
+    user_id: int | None = None
 
 
 class ParticipantResponse(BaseModel):
@@ -36,6 +37,8 @@ class MeetingResponse(BaseModel):
     scheduled_at: datetime | None
     duration: int | None
     share_link: str
+    user_id: int | None = None
+    is_permanent: bool = False
     participants: list[ParticipantResponse] = []
 
     model_config = {"from_attributes": True}
@@ -56,12 +59,19 @@ class MeetingListItem(BaseModel):
     duration: int | None
     share_link: str
     participant_count: int
+    user_id: int | None = None
+    is_permanent: bool = False
 
     model_config = {"from_attributes": True}
 
     @field_serializer("created_at", "scheduled_at")
     def serialize_datetimes(self, value: datetime | None) -> str | None:
         return serialize_utc_datetime(value)
+
+
+class MeetingListResponse(BaseModel):
+    public_meetings: list[MeetingListItem]
+    my_meetings: list[MeetingListItem]
 
 
 class JoinMeetingRequest(BaseModel):

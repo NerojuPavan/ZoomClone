@@ -3,7 +3,7 @@ import type {
   JoinMeetingResponse,
   Meeting,
   MeetingCreatePayload,
-  MeetingListItem,
+  MeetingListResponse,
 } from "@/types/meeting";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -39,8 +39,9 @@ export const meetingApi = {
     });
   },
 
-  listMeetings(): Promise<MeetingListItem[]> {
-    return request<MeetingListItem[]>("/meetings");
+  listMeetings(userId?: number): Promise<MeetingListResponse> {
+    const query = userId != null ? `?user_id=${userId}` : "";
+    return request<MeetingListResponse>(`/meetings${query}`);
   },
 
   getMeeting(meetingId: string): Promise<Meeting> {

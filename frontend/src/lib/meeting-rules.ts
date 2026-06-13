@@ -5,7 +5,7 @@ export const MAX_MEETING_DURATION_MINUTES = 45;
 
 type JoinCheckMeeting = Pick<
   MeetingListItem,
-  "status" | "scheduled_at" | "created_at" | "duration" | "meeting_id"
+  "status" | "scheduled_at" | "created_at" | "duration" | "meeting_id" | "is_permanent"
 >;
 
 export type MeetingJoinState =
@@ -39,6 +39,13 @@ export function getMeetingJoinState(
   meeting: JoinCheckMeeting,
   now: Date = new Date(),
 ): MeetingJoinState {
+  if (meeting.is_permanent) {
+    if (meeting.status === "ended") {
+      return { joinable: false, reason: "ended", label: "Ended" };
+    }
+    return { joinable: true };
+  }
+
   if (meeting.status === "ended") {
     return { joinable: false, reason: "ended", label: "Ended" };
   }
@@ -60,6 +67,7 @@ export function isUpcomingMeeting(
   meeting: JoinCheckMeeting,
   now: Date = new Date(),
 ): boolean {
+  if (meeting.is_permanent) return false;
   if (!meeting.scheduled_at) return false;
   if (parseApiDateTime(meeting.scheduled_at) > now) return true;
   return getMeetingJoinState(meeting, now).joinable;
@@ -70,6 +78,7 @@ export function isMeetingOpen(
   meeting: JoinCheckMeeting,
   now: Date = new Date(),
 ): boolean {
+  if (meeting.is_permanent && meeting.status !== "ended") return true;
   if (meeting.status === "ended") return false;
 
   const joinState = getMeetingJoinState(meeting, now);
