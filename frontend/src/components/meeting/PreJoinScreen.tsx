@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RequiredMark } from "@/components/dashboard/FormField";
 import { usePreJoinMedia } from "@/hooks/usePreJoinMedia";
 import {
   clearRememberedName,
@@ -189,11 +190,14 @@ export function PreJoinScreen({
               <div className="space-y-2">
                 <Label htmlFor="displayName" className="font-medium text-secondary-foreground">
                   Your Name
+                  <RequiredMark />
                 </Label>
                 <div className="relative">
                   <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
                   <Input
                     id="displayName"
+                    required
+                    aria-required
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="Enter your display name"
