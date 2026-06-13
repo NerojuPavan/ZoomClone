@@ -14,7 +14,16 @@ interface FormFieldProps {
   hint?: string;
   error?: string;
   multiline?: boolean;
+  required?: boolean;
   className?: string;
+}
+
+export function RequiredMark() {
+  return (
+    <span className="ml-0.5 text-destructive" aria-hidden="true">
+      *
+    </span>
+  );
 }
 
 type InputProps = FormFieldProps &
@@ -30,6 +39,7 @@ export function FormField({
   hint,
   error,
   multiline,
+  required,
   className,
   ...props
 }: InputProps) {
@@ -37,6 +47,7 @@ export function FormField({
     <div className={cn("space-y-2", className)}>
       <Label htmlFor={id} className="text-sm font-medium text-secondary-foreground">
         {label}
+        {required && <RequiredMark />}
       </Label>
       <div className="relative">
         {Icon && (
@@ -45,9 +56,10 @@ export function FormField({
         {multiline ? (
           <Textarea
             id={id}
+            aria-required={required}
             className={cn(
-              "min-h-[96px] resize-none rounded-xl border-border bg-muted pl-3 text-foreground transition-colors",
-              "placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/25",
+              "min-h-[88px] resize-none rounded-md border-border bg-card pl-3 text-foreground transition-colors",
+              "placeholder:text-muted-foreground focus-visible:border-[#0E71EB] focus-visible:ring-[#0E71EB]/25",
               Icon && "pl-10",
             )}
             {...(props as React.ComponentProps<typeof Textarea>)}
@@ -55,9 +67,11 @@ export function FormField({
         ) : (
           <Input
             id={id}
+            aria-required={required}
+            required={required}
             className={cn(
-              "h-11 rounded-xl border-border bg-muted text-foreground transition-colors",
-              "placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/25",
+              "h-10 rounded-md border-border bg-card text-foreground transition-colors",
+              "placeholder:text-muted-foreground focus-visible:border-[#0E71EB] focus-visible:ring-[#0E71EB]/25",
               Icon && "pl-10",
             )}
             {...(props as React.ComponentProps<typeof Input>)}

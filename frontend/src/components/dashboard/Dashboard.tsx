@@ -1,19 +1,32 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LayoutGrid, Loader2 } from "lucide-react";
+import { CalendarClock, History, Loader2 } from "lucide-react";
 
 import { isUpcomingMeeting } from "@/lib/meeting-rules";
 import { meetingApi } from "@/services/meeting-api";
 import type { MeetingListItem } from "@/types/meeting";
 
+import { DashboardHero, type DashboardAction } from "./DashboardHero";
 import { DashboardNav } from "./DashboardNav";
 import { MeetingList } from "./MeetingList";
+
+function matchesSearch(meeting: MeetingListItem, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return (
+    meeting.title.toLowerCase().includes(q) ||
+    meeting.meeting_id.toLowerCase().includes(q) ||
+    (meeting.description?.toLowerCase().includes(q) ?? false)
+  );
+}
 
 export function Dashboard() {
   const [meetings, setMeetings] = useState<MeetingListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [activeDialog, setActiveDialog] = useState<DashboardAction | null>(null);
 
   const loadMeetings = useCallback(async () => {
     setIsLoading(true);
@@ -32,67 +45,76 @@ export function Dashboard() {
     loadMeetings();
   }, [loadMeetings]);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        document.getElementById("dashboard-search")?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const now = new Date();
 
-  const upcomingMeetings = useMemo(
-    () => meetings.filter((m) => isUpcomingMeeting(m, now)),
-    [meetings, now],
-  );
+  const upcomingMeetings = useMemo(() => {
+    return meetings
+      .filter((m) => isUpcomingMeeting(m, now))
+      .filter((m) => matchesSearch(m, search));
+  }, [meetings, now, search]);
 
-  const recentMeetings = useMemo(
-    () => meetings.filter((m) => !isUpcomingMeeting(m, now)),
-    [meetings, now],
-  );
+  const recentMeetings = useMemo(() => {
+    return meetings
+      .filter((m) => !isUpcomingMeeting(m, now))
+      .filter((m) => matchesSearch(m, search));
+  }, [meetings, now, search]);
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -left-32 top-0 h-96 w-96 rounded-full bg-[#2D8CFF]/8 blur-3xl" />
-        <div className="absolute -right-32 top-48 h-80 w-80 rounded-full bg-[#7B68EE]/8 blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-[#09A287]/6 blur-3xl" />
-      </div>
+      <DashboardNav
+        activeDialog={activeDialog}
+        onDialogChange={setActiveDialog}
+        onScheduled={loadMeetings}
+        search={search}
+        onSearchChange={setSearch}
+      />
 
-      <DashboardNav onScheduled={loadMeetings} />
+      <DashboardHero onAction={setActiveDialog} />
 
-      <main className="relative mx-auto max-w-6xl space-y-8 px-4 py-8 md:py-10">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent">
-            <LayoutGrid className="h-4 w-4 text-accent-foreground" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-foreground">Your meetings</h2>
-            <p className="text-sm text-muted-foreground">
-              Upcoming schedules and recent sessions
-            </p>
-          </div>
-        </div>
-
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
         {isLoading ? (
-          <div className="flex items-center justify-center rounded-2xl border border-border bg-card py-20 text-muted-foreground shadow-sm">
+          <div className="flex items-center justify-center rounded-xl border border-border bg-card py-16 text-muted-foreground">
             <Loader2 className="mr-2 h-5 w-5 animate-spin text-primary" />
-            Loading your meetings...
+            Loading meetings...
           </div>
         ) : error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-6 py-8 text-center text-red-600">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center text-red-600 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
             {error}
           </div>
         ) : (
-          <section className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-5">
             <MeetingList
               variant="upcoming"
               title="Upcoming Meetings"
-              description="Scheduled sessions on your calendar"
+              description="Scheduled sessions you can start or join"
               meetings={upcomingMeetings}
-              emptyMessage="No upcoming meetings scheduled"
+              emptyMessage={
+                search.trim() ? "No upcoming meetings match your search" : "No upcoming meetings"
+              }
+              icon={CalendarClock}
             />
             <MeetingList
               variant="recent"
-              title="Recent Meetings"
+              title="Previous Meetings"
               description="Instant calls and past sessions"
               meetings={recentMeetings}
-              emptyMessage="No recent meetings yet"
+              emptyMessage={
+                search.trim() ? "No previous meetings match your search" : "No previous meetings"
+              }
+              icon={History}
             />
-          </section>
+          </div>
         )}
       </main>
     </div>

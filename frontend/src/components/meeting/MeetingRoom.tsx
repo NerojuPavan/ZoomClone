@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Copy, Loader2, Settings } from "lucide-react";
 
 import { SettingsDrawer } from "@/components/settings/SettingsDrawer";
 import { Button } from "@/components/ui/button";
 import { MAX_ROOM_PARTICIPANTS } from "@/lib/config";
-import { getMeetingJoinState } from "@/lib/meeting-rules";
+import { getMeetingJoinState, getMeetingStart } from "@/lib/meeting-rules";
 import { useMeeting } from "@/hooks/useMeeting";
+import { useMeetingTimer } from "@/hooks/useMeetingTimer";
 
 import { ControlBar } from "./ControlBar";
 import { ParticipantList } from "./ParticipantList";
@@ -55,6 +56,12 @@ export function MeetingRoom({ meetingId }: MeetingRoomProps) {
   } = useMeeting({ meetingId });
 
   const participantCount = participants.length + 1;
+
+  const meetingStart = useMemo(
+    () => (meeting ? getMeetingStart(meeting) : null),
+    [meeting],
+  );
+  const elapsed = useMeetingTimer(meetingStart);
 
   const handleJoin = async (prefs: Parameters<typeof joinMeeting>[0]) => {
     setIsJoining(true);
@@ -135,7 +142,12 @@ export function MeetingRoom({ meetingId }: MeetingRoomProps) {
     <div className="flex h-screen flex-col overflow-hidden bg-meeting-bg text-meeting-text">
       <header className="flex shrink-0 flex-col gap-2 border-b border-meeting-border bg-meeting-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="min-w-0">
-          <h1 className="truncate text-base font-semibold sm:text-lg">{meeting?.title}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="truncate text-base font-semibold sm:text-lg">{meeting?.title}</h1>
+            <span className="rounded-md bg-meeting-panel-muted px-2 py-0.5 font-mono text-xs text-meeting-text-muted">
+              {elapsed}
+            </span>
+          </div>
           <p className="text-xs text-meeting-text-muted">
             <span
               className={

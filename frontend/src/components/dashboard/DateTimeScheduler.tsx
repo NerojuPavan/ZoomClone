@@ -1,8 +1,7 @@
 "use client";
 
-import { Calendar, Clock } from "lucide-react";
-
 import { Label } from "@/components/ui/label";
+import { RequiredMark } from "@/components/dashboard/FormField";
 import { getLocalDateString, getLocalTimeZoneLabel } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 
@@ -18,8 +17,8 @@ export interface DateTimeValue {
 const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
 
-const selectClass =
-  "h-11 w-full appearance-none rounded-xl border border-border bg-muted px-3 text-sm text-foreground transition-colors focus:border-[#7B68EE] focus:outline-none focus:ring-2 focus:ring-[#7B68EE]/25";
+const fieldClass =
+  "h-10 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground transition-colors focus:border-[#0E71EB] focus:outline-none focus:ring-1 focus:ring-[#0E71EB]";
 
 interface DateTimeSchedulerProps {
   value: DateTimeValue;
@@ -31,7 +30,7 @@ export function getDefaultDateTimeValue(): DateTimeValue {
   const now = new Date();
   now.setMinutes(now.getMinutes() + 30, 0, 0);
 
-  let hours = now.getHours();
+  const hours = now.getHours();
   const period: AmPm = hours >= 12 ? "PM" : "AM";
   const hour12 = hours % 12 || 12;
 
@@ -70,71 +69,79 @@ export function DateTimeScheduler({ value, onChange, className }: DateTimeSchedu
   return (
     <div className={cn("space-y-4", className)}>
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-secondary-foreground">Date</Label>
-        <div className="relative">
-          <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7B68EE]" />
-          <input
-            id="schedule-date"
-            type="date"
-            min={today}
-            value={value.date}
-            onChange={(e) => update({ date: e.target.value })}
-            className={cn(selectClass, "pl-10 [color-scheme:light] dark:[color-scheme:dark]")}
-          />
-        </div>
+        <Label htmlFor="schedule-date" className="text-sm font-medium text-foreground">
+          When
+          <RequiredMark />
+        </Label>
+        <input
+          id="schedule-date"
+          type="date"
+          min={today}
+          required
+          aria-required
+          value={value.date}
+          onChange={(e) => update({ date: e.target.value })}
+          className={cn(fieldClass, "[color-scheme:light] dark:[color-scheme:dark]")}
+        />
       </div>
 
       <div className="space-y-2">
-        <Label className="flex items-center gap-2 text-sm font-medium text-secondary-foreground">
-          <Clock className="h-4 w-4 text-[#7B68EE]" />
+        <Label className="text-sm font-medium text-foreground">
           Time
+          <RequiredMark />
         </Label>
         <div className="grid grid-cols-3 gap-2">
-            <select
-              id="schedule-hour"
-              aria-label="Hour"
-              value={value.hour}
-              onChange={(e) => update({ hour: e.target.value })}
-              className={cn(selectClass, "sm:col-span-1")}
-            >
-              <option value="" disabled>
-                Hour
+          <select
+            id="schedule-hour"
+            aria-label="Hour"
+            required
+            aria-required
+            value={value.hour}
+            onChange={(e) => update({ hour: e.target.value })}
+            className={fieldClass}
+          >
+            <option value="" disabled>
+              Hour
+            </option>
+            {HOURS.map((h) => (
+              <option key={h} value={h}>
+                {h}
               </option>
-              {HOURS.map((h) => (
-                <option key={h} value={h}>
-                  {h}
-                </option>
-              ))}
-            </select>
-            <select
-              id="schedule-minute"
-              aria-label="Minute"
-              value={value.minute}
-              onChange={(e) => update({ minute: e.target.value })}
-              className={selectClass}
-            >
-              <option value="" disabled>
-                Min
+            ))}
+          </select>
+          <select
+            id="schedule-minute"
+            aria-label="Minute"
+            required
+            aria-required
+            value={value.minute}
+            onChange={(e) => update({ minute: e.target.value })}
+            className={fieldClass}
+          >
+            <option value="" disabled>
+              Min
+            </option>
+            {MINUTES.map((m) => (
+              <option key={m} value={m}>
+                :{m}
               </option>
-              {MINUTES.map((m) => (
-                <option key={m} value={m}>
-                  :{m}
-                </option>
-              ))}
-            </select>
-            <select
-              id="schedule-period"
-              aria-label="AM or PM"
-              value={value.period}
-              onChange={(e) => update({ period: e.target.value as AmPm })}
-              className={selectClass}
-            >
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
+            ))}
+          </select>
+          <select
+            id="schedule-period"
+            aria-label="AM or PM"
+            required
+            aria-required
+            value={value.period}
+            onChange={(e) => update({ period: e.target.value as AmPm })}
+            className={fieldClass}
+          >
+            <option value="AM">AM</option>
+            <option value="PM">PM</option>
+          </select>
         </div>
         <p className="text-xs text-muted-foreground">
-          Times use your local timezone ({timeZone})
+          Time zone: {timeZone}
         </p>
       </div>
     </div>

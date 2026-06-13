@@ -3,13 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Calendar,
   CalendarDays,
   FileText,
   Link2,
   Loader2,
   LogIn,
   Plus,
+  Search,
   Settings,
   User,
   Video,
@@ -38,21 +38,27 @@ import { SettingsDrawer } from "@/components/settings/SettingsDrawer";
 
 import { ShareLinkBox } from "./ShareLinkBox";
 
+export type DashboardDialog = "new" | "join" | "schedule";
+
 interface DashboardNavProps {
   onScheduled?: () => void;
-  activeDialog?: "new" | "join" | "schedule" | null;
-  onDialogChange?: (dialog: "new" | "join" | "schedule" | null) => void;
+  activeDialog?: DashboardDialog | null;
+  onDialogChange?: (dialog: DashboardDialog | null) => void;
+  search?: string;
+  onSearchChange?: (value: string) => void;
 }
 
 export function DashboardNav({
   onScheduled,
   activeDialog: controlledDialog,
   onDialogChange,
+  search = "",
+  onSearchChange,
 }: DashboardNavProps) {
-  const [internalDialog, setInternalDialog] = useState<"new" | "join" | "schedule" | null>(null);
+  const [internalDialog, setInternalDialog] = useState<DashboardDialog | null>(null);
   const activeDialog = controlledDialog !== undefined ? controlledDialog : internalDialog;
 
-  const setActiveDialog = (dialog: "new" | "join" | "schedule" | null) => {
+  const setActiveDialog = (dialog: DashboardDialog | null) => {
     if (onDialogChange) onDialogChange(dialog);
     else setInternalDialog(dialog);
   };
@@ -167,73 +173,59 @@ export function DashboardNav({
     }
   };
 
-  const navItems = [
-    { key: "new" as const, label: "New Meeting", icon: Plus, color: "hover:bg-[#FFF0E8] hover:text-[#FF6B2C]" },
-    { key: "join" as const, label: "Join", icon: LogIn, color: "hover:bg-[#E7F1FF] hover:text-[#0E71EB]" },
-    { key: "schedule" as const, label: "Schedule", icon: Calendar, color: "hover:bg-[#F0EDFF] hover:text-[#7B68EE]" },
-  ];
-
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-border bg-card/90 shadow-sm backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-4">
-          <Link href="/" className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#2D8CFF] to-[#0E71EB] text-white shadow-md shadow-blue-200/50">
+      <header className="sticky top-0 z-40 border-b border-border bg-card/95 shadow-sm backdrop-blur-md">
+        <div className="mx-auto flex max-w-4xl items-center gap-3 px-3 py-3 sm:gap-4 sm:px-6">
+          <Link href="/" className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm sm:h-10 sm:w-10">
               <Video className="h-5 w-5" />
             </div>
-            <div className="min-w-0">
-              <span className="truncate text-base font-bold text-foreground sm:text-lg">Zoom Clone</span>
-              <p className="hidden text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:block">
-                Meetings
-              </p>
-            </div>
+            <span className="hidden truncate text-base font-bold text-foreground sm:inline sm:text-lg">
+              Zoom Clone
+            </span>
           </Link>
 
-          <div className="flex items-center gap-2">
-            <nav className="flex items-center gap-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Button
-                    key={item.key}
-                    variant="ghost"
-                    className={`gap-2 rounded-xl font-medium text-secondary-foreground ${item.color}`}
-                    onClick={() => setActiveDialog(item.key)}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{item.label}</span>
-                  </Button>
-                );
-              })}
-            </nav>
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              id="dashboard-search"
+              type="search"
+              value={search}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              placeholder="Search"
+              aria-label="Search meetings"
+              className="h-9 w-full rounded-lg border border-border bg-muted/50 pl-9 pr-16 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:bg-muted/30"
+            />
+            <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-card px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground md:inline-block">
+              Ctrl+K
+            </kbd>
+          </div>
 
-            <div className="ml-1 hidden h-6 w-px bg-border sm:block" />
-
-            <div className="flex items-center gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
-                aria-label="Settings"
-                title="Settings"
-                onClick={() => setSettingsOpen(true)}
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-9 gap-2 rounded-xl px-2 text-secondary-foreground hover:bg-muted"
-                aria-label="Profile"
-                title="Profile"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#2D8CFF] to-[#0E71EB] text-xs font-bold text-white">
-                  <User className="h-4 w-4" />
-                </div>
-                <span className="hidden text-sm font-medium md:inline">Guest User</span>
-              </Button>
-            </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Settings"
+              title="Settings"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-9 gap-2 rounded-xl px-2 text-secondary-foreground hover:bg-muted"
+              aria-label="Profile"
+              title="Profile"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                <User className="h-4 w-4" />
+              </div>
+              <span className="hidden text-sm font-medium md:inline">Guest User</span>
+            </Button>
           </div>
         </div>
       </header>
@@ -285,6 +277,7 @@ export function DashboardNav({
                 id="nav-title"
                 label="Meeting title"
                 icon={Video}
+                required
                 placeholder="e.g. Team standup"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
@@ -340,6 +333,7 @@ export function DashboardNav({
               id="nav-join-id"
               label="Meeting ID or invite link"
               icon={Link2}
+              required
               placeholder="Paste link or enter ID"
               value={joinId}
               onChange={(e) => {
@@ -375,118 +369,106 @@ export function DashboardNav({
 
       {/* Schedule Meeting Dialog */}
       <Dialog open={activeDialog === "schedule"} onOpenChange={(open) => !open && closeScheduleDialog()}>
-        <DialogContent className="gap-0 overflow-hidden border-border p-0 sm:max-w-lg">
-          <div className="border-b border-border bg-gradient-to-b from-[#F0EDFF]/50 to-card px-6 pb-6 pt-6">
+        <DialogContent className="gap-0 overflow-hidden border-border p-0 sm:max-w-[480px]">
+          <div className="border-b border-border px-6 py-5">
             <DialogHeaderIcon
               icon={CalendarDays}
-              title="Schedule a Meeting"
-              subtitle="Plan ahead"
-              accent="purple"
+              title="Schedule Meeting"
+              subtitle=""
+              accent="blue"
+              compact
             />
           </div>
-          <form onSubmit={handleSchedule} className="space-y-5 px-6 py-6">
+          <form onSubmit={handleSchedule} className="space-y-4 px-6 py-5">
             <FormField
               id="nav-schedule-title"
-              label="Meeting title"
-              icon={Video}
-              placeholder="Weekly review"
+              label="Topic"
+              required
+              placeholder="My Meeting"
               value={scheduleTitle}
               onChange={(e) => setScheduleTitle(e.target.value)}
             />
             <FormField
               id="nav-schedule-desc"
               label="Description"
-              icon={FileText}
               multiline
-              placeholder="Agenda, notes, or goals"
+              placeholder="Optional meeting description"
               value={scheduleDescription}
               onChange={(e) => setScheduleDescription(e.target.value)}
             />
             <DateTimeScheduler value={dateTimeValue} onChange={setDateTimeValue} />
             <DurationSelect value={duration} onChange={setDuration} />
             {scheduleError && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{scheduleError}</p>
+              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-300">
+                {scheduleError}
+              </p>
             )}
-            <Button
-              type="submit"
-              className="h-12 w-full rounded-xl bg-gradient-to-r from-[#9B8AFF] to-[#7B68EE] text-base font-semibold shadow-md shadow-violet-200/50 hover:from-[#8B7AEF] hover:to-[#6B58DE]"
-              disabled={
-                isScheduling ||
-                !scheduleTitle.trim() ||
-                !buildScheduledAtISO(dateTimeValue)
-              }
-            >
-              {isScheduling ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Scheduling...
-                </>
-              ) : (
-                <>
-                  <CalendarDays className="mr-2 h-4 w-4" />
-                  Schedule Meeting
-                </>
-              )}
-            </Button>
+            <div className="flex justify-end gap-3 border-t border-border pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 rounded-md border-border px-5"
+                onClick={closeScheduleDialog}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="h-10 rounded-md bg-[#0E71EB] px-6 font-semibold hover:bg-[#0C65D8]"
+                disabled={
+                  isScheduling ||
+                  !scheduleTitle.trim() ||
+                  !buildScheduledAtISO(dateTimeValue)
+                }
+              >
+                {isScheduling ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save"
+                )}
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
 
       {/* Schedule Success Dialog */}
       <Dialog open={!!scheduledMeeting} onOpenChange={(open) => !open && closeScheduleSuccess()}>
-        <DialogContent className="gap-0 overflow-hidden border-border p-0 sm:max-w-lg">
-          <div className="border-b border-border bg-gradient-to-b from-[#F0EDFF]/50 to-card px-6 pb-6 pt-6">
+        <DialogContent className="gap-0 overflow-hidden border-border p-0 sm:max-w-[480px]">
+          <div className="border-b border-border px-6 py-5">
             <DialogHeaderIcon
               icon={CalendarDays}
               title="Meeting Scheduled"
-              subtitle="You're all set"
-              accent="purple"
+              subtitle=""
+              accent="blue"
+              compact
             />
           </div>
           {scheduledMeeting && (
-            <div className="space-y-5 px-6 py-6">
-              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                &quot;{scheduledMeeting.title}&quot; has been added to your upcoming meetings.
+            <div className="space-y-4 px-6 py-5">
+              <p className="text-sm text-secondary-foreground">
+                Your meeting has been scheduled.
               </p>
 
-              <div className="space-y-3 rounded-xl border border-border bg-muted p-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Meeting title
-                  </p>
-                  <p className="mt-1 font-semibold text-foreground">{scheduledMeeting.title}</p>
-                </div>
+              <div className="rounded-md border border-border bg-muted/40 p-4">
+                <p className="text-base font-semibold text-foreground">{scheduledMeeting.title}</p>
                 {scheduledMeeting.description && (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Description
-                    </p>
-                    <p className="mt-1 text-sm text-secondary-foreground">{scheduledMeeting.description}</p>
-                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{scheduledMeeting.description}</p>
                 )}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Date & time
-                    </p>
-                    <p className="mt-1 text-sm text-secondary-foreground">
-                      {formatLocalDateTime(scheduledMeeting.scheduled_at, {
-                        weekday: "long",
-                        month: "long",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Duration
-                    </p>
-                    <p className="mt-1 text-sm text-secondary-foreground">
-                      {scheduledMeeting.duration ?? 45} minutes
-                    </p>
-                  </div>
+                <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                  <p>
+                    {formatLocalDateTime(scheduledMeeting.scheduled_at, {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  <p>{scheduledMeeting.duration ?? 45} minutes</p>
                 </div>
               </div>
 
@@ -496,13 +478,15 @@ export function DashboardNav({
                 label="Invite link"
               />
 
-              <Button
-                type="button"
-                className="h-12 w-full rounded-xl bg-gradient-to-r from-[#9B8AFF] to-[#7B68EE] text-base font-semibold shadow-md shadow-violet-200/50 hover:from-[#8B7AEF] hover:to-[#6B58DE]"
-                onClick={closeScheduleSuccess}
-              >
-                Done
-              </Button>
+              <div className="flex justify-end border-t border-border pt-4">
+                <Button
+                  type="button"
+                  className="h-10 rounded-md bg-[#0E71EB] px-6 font-semibold hover:bg-[#0C65D8]"
+                  onClick={closeScheduleSuccess}
+                >
+                  Done
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
